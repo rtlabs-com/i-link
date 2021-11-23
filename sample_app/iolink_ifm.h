@@ -15,13 +15,13 @@
 
 #include "iolink_handler.h"
 
-#define IFM_VENDOR_ID        0x0136
+#define IFM_VENDOR_ID 0x0136
 
-#define IFM_RFID_DEVICE_ID   0x03C7
-#define IFM_HMI_DEVICE_ID    0x02A9
+#define IFM_RFID_DEVICE_ID 0x03C7
+#define IFM_HMI_DEVICE_ID  0x02A9
 
 void ifmrfid_setup (iolink_app_port_ctx_t * app_port);
 
 void ifmHMI_setup (iolink_app_port_ctx_t * app_port);
 
-#endif  // IOLINK_IFM_H
+#endif // IOLINK_IFM_H

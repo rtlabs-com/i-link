@@ -36,15 +36,15 @@ int _iolink_pl_hw_open (const char * name)
 
    strncpy (local_name, name, 100);
 
-   char *argp = strrchr(local_name, '/');
+   char * argp = strrchr (local_name, '/');
    if (argp == NULL)
    {
-      printf("%s: '/' not found in file name.\n", __func__);
+      printf ("%s: '/' not found in file name.\n", __func__);
       return 0;
    }
 
-   arg = atoi(argp + 1);
-   *argp = '\0';
+   arg    = atoi (argp + 1);
+   *argp  = '\0';
    int fd = open (local_name, O_RDWR, 0);
 
    if (fd < 1)
@@ -52,17 +52,21 @@ int _iolink_pl_hw_open (const char * name)
       return -1;
    }
 
-   drv_t * drv = find_driver_by_name(local_name);
+   drv_t * drv = find_driver_by_name (local_name);
 
-   printf("%s: Driver %sfound for %lu: %s\n", __func__,
-          (drv == NULL) ? "NOT " : "", arg, local_name);
+   printf (
+      "%s: Driver %sfound for %lu: %s\n",
+      __func__,
+      (drv == NULL) ? "NOT " : "",
+      arg,
+      local_name);
 
    if (drv == NULL)
    {
       return -1;
    }
 
-   fd_set_driver(fd, drv, (void *)arg);
+   fd_set_driver (fd, drv, (void *)arg);
 
    return fd;
 }

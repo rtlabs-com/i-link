@@ -21,81 +21,84 @@
 #include <stdio.h>
 #include <string.h>
 
-uint8_t mock_iolink_revisionid = IOL_DIR_PARAM_REV_V11;
-uint8_t mock_iolink_master_cycletime = 0;
-uint8_t mock_iolink_min_cycletime = 79;
-uint16_t mock_iolink_vendorid = 1171;
-uint32_t mock_iolink_deviceid = 0x112345;
-uint16_t mock_iolink_functionid = 0x999A;
-iolink_transmission_rate_t mock_iolink_trans_rate =
-                                             IOLINK_TRANSMISSION_RATE_COM1;
+uint8_t mock_iolink_revisionid                    = IOL_DIR_PARAM_REV_V11;
+uint8_t mock_iolink_master_cycletime              = 0;
+uint8_t mock_iolink_min_cycletime                 = 79;
+uint16_t mock_iolink_vendorid                     = 1171;
+uint32_t mock_iolink_deviceid                     = 0x112345;
+uint16_t mock_iolink_functionid                   = 0x999A;
+iolink_transmission_rate_t mock_iolink_trans_rate = IOLINK_TRANSMISSION_RATE_COM1;
 
-uint8_t mock_iolink_restart_device_cnt = 0;
-uint8_t mock_iolink_mastercmd_master_ident_cnt = 0;
-uint8_t mock_iolink_mastercmd_preop_cnt = 0;
-uint8_t mock_iolink_write_devmode_inactive_cnt = 0;
-uint8_t mock_iolink_write_devmode_operate_cnt = 0;
-uint8_t mock_iolink_al_data [64] = {0};
-uint8_t mock_iolink_al_data_len = 0;
-uint16_t mock_iolink_al_data_index = 0;
-uint8_t mock_iolink_al_data_subindex = 0;
-uint8_t mock_iolink_al_read_cnf_cnt = 0;
-uint8_t mock_iolink_al_read_req_cnt = 0;
-uint8_t mock_iolink_al_write_cnf_cnt = 0;
-uint8_t mock_iolink_al_write_req_cnt = 0;
-uint8_t mock_iolink_al_control_req_cnt = 0;
-uint8_t mock_iolink_al_control_ind_cnt = 0;
-uint8_t mock_iolink_dl_pdout_data [IOLINK_PD_MAX_SIZE] = {0};
-uint8_t mock_iolink_dl_pdout_data_len = 0;
-uint8_t mock_iolink_dl_pdin_data [IOLINK_PD_MAX_SIZE] = {0};
-uint8_t mock_iolink_dl_pdin_data_len = 0;
-uint8_t mock_iolink_dl_control_req_cnt = 0;
-uint8_t mock_iolink_dl_eventconf_req_cnt = 0;
-uint8_t mock_iolink_al_setoutput_req_cnt = 0;
-uint8_t mock_iolink_al_getinput_req_cnt = 0;
-uint8_t mock_iolink_al_getinputoutput_req_cnt = 0;
-uint8_t mock_iolink_al_newinput_inf_cnt = 0;
-uint8_t mock_iolink_al_event_cnt = 0;
-uint8_t mock_iolink_sm_operate_cnt = 0;
-uint8_t mock_iolink_ds_delete_cnt = 0;
-uint8_t mock_iolink_ds_startup_cnt = 0;
-uint8_t mock_iolink_ds_ready_cnt = 0;
-uint8_t mock_iolink_ds_fault_cnt = 0;
-iolink_ds_fault_t mock_iolink_ds_fault = IOLINK_DS_FAULT_NONE;
-uint8_t mock_iolink_od_start_cnt = 0;
-uint8_t mock_iolink_od_stop_cnt = 0;
-uint8_t mock_iolink_pd_start_cnt = 0;
-uint8_t mock_iolink_pd_stop_cnt = 0;
+uint8_t mock_iolink_restart_device_cnt                = 0;
+uint8_t mock_iolink_mastercmd_master_ident_cnt        = 0;
+uint8_t mock_iolink_mastercmd_preop_cnt               = 0;
+uint8_t mock_iolink_write_devmode_inactive_cnt        = 0;
+uint8_t mock_iolink_write_devmode_operate_cnt         = 0;
+uint8_t mock_iolink_al_data[64]                       = {0};
+uint8_t mock_iolink_al_data_len                       = 0;
+uint16_t mock_iolink_al_data_index                    = 0;
+uint8_t mock_iolink_al_data_subindex                  = 0;
+uint8_t mock_iolink_al_read_cnf_cnt                   = 0;
+uint8_t mock_iolink_al_read_req_cnt                   = 0;
+uint8_t mock_iolink_al_write_cnf_cnt                  = 0;
+uint8_t mock_iolink_al_write_req_cnt                  = 0;
+uint8_t mock_iolink_al_control_req_cnt                = 0;
+uint8_t mock_iolink_al_control_ind_cnt                = 0;
+uint8_t mock_iolink_dl_pdout_data[IOLINK_PD_MAX_SIZE] = {0};
+uint8_t mock_iolink_dl_pdout_data_len                 = 0;
+uint8_t mock_iolink_dl_pdin_data[IOLINK_PD_MAX_SIZE]  = {0};
+uint8_t mock_iolink_dl_pdin_data_len                  = 0;
+uint8_t mock_iolink_dl_control_req_cnt                = 0;
+uint8_t mock_iolink_dl_eventconf_req_cnt              = 0;
+uint8_t mock_iolink_al_setoutput_req_cnt              = 0;
+uint8_t mock_iolink_al_getinput_req_cnt               = 0;
+uint8_t mock_iolink_al_getinputoutput_req_cnt         = 0;
+uint8_t mock_iolink_al_newinput_inf_cnt               = 0;
+uint8_t mock_iolink_al_event_cnt                      = 0;
+uint8_t mock_iolink_sm_operate_cnt                    = 0;
+uint8_t mock_iolink_ds_delete_cnt                     = 0;
+uint8_t mock_iolink_ds_startup_cnt                    = 0;
+uint8_t mock_iolink_ds_ready_cnt                      = 0;
+uint8_t mock_iolink_ds_fault_cnt                      = 0;
+iolink_ds_fault_t mock_iolink_ds_fault                = IOLINK_DS_FAULT_NONE;
+uint8_t mock_iolink_od_start_cnt                      = 0;
+uint8_t mock_iolink_od_stop_cnt                       = 0;
+uint8_t mock_iolink_pd_start_cnt                      = 0;
+uint8_t mock_iolink_pd_stop_cnt                       = 0;
 diag_entry_t mock_iolink_al_events[6];
 iolink_sm_portmode_t mock_iolink_sm_portmode = IOLINK_SM_PORTMODE_INACTIVE;
 iolink_smi_errortypes_t mock_iolink_al_read_errortype = IOLINK_SMI_ERRORTYPE_NONE;
-iolink_smi_errortypes_t mock_iolink_al_write_errortype = IOLINK_SMI_ERRORTYPE_NONE;
+iolink_smi_errortypes_t mock_iolink_al_write_errortype =
+   IOLINK_SMI_ERRORTYPE_NONE;
 iolink_controlcode_t mock_iolink_controlcode = IOLINK_CONTROLCODE_NONE;
-void (*mock_iolink_al_write_cnf_cb)(iolink_port_t * port,
-                                    iolink_smi_errortypes_t errortype);
-void (*mock_iolink_al_read_cnf_cb)(iolink_port_t * port, uint8_t len,
-                                   uint8_t * data,
-                                   iolink_smi_errortypes_t errortype);
+void (*mock_iolink_al_write_cnf_cb) (
+   iolink_port_t * port,
+   iolink_smi_errortypes_t errortype);
+void (*mock_iolink_al_read_cnf_cb) (
+   iolink_port_t * port,
+   uint8_t len,
+   uint8_t * data,
+   iolink_smi_errortypes_t errortype);
 
-uint8_t mock_iolink_smi_cnf_cnt = 0;
-uint8_t mock_iolink_smi_joberror_cnt = 0;
-uint8_t mock_iolink_smi_portcfg_cnf_cnt = 0;
+uint8_t mock_iolink_smi_cnf_cnt            = 0;
+uint8_t mock_iolink_smi_joberror_cnt       = 0;
+uint8_t mock_iolink_smi_portcfg_cnf_cnt    = 0;
 uint8_t mock_iolink_smi_portstatus_cnf_cnt = 0;
-uint8_t mock_iolink_smi_portevent_ind_cnt = 0;
-uint8_t arg_block_buff[sizeof(arg_block_t) + 64];
+uint8_t mock_iolink_smi_portevent_ind_cnt  = 0;
+uint8_t arg_block_buff[sizeof (arg_block_t) + 64];
 arg_block_t * mock_iolink_smi_arg_block = (arg_block_t *)arg_block_buff;
-uint16_t mock_iolink_smi_arg_block_len = 0;
+uint16_t mock_iolink_smi_arg_block_len  = 0;
 iolink_arg_block_id_t mock_iolink_smi_ref_arg_block_id =
-                                          IOLINK_ARG_BLOCK_ID_MASTERIDENT;
+   IOLINK_ARG_BLOCK_ID_MASTERIDENT;
 
 iolink_smp_parameterlist_t mock_iolink_cfg_paraml;
 iolink_job_t mock_iolink_job;
 
-iolink_error_t mock_DL_Write_req (iolink_port_t * port, uint8_t address,
-                                  uint8_t value)
+iolink_error_t mock_DL_Write_req (iolink_port_t * port, uint8_t address, uint8_t value)
 {
-   (void) port;
-   if (address == IOL_DIR_PARAMA_MASTER_CMD) {
+   (void)port;
+   if (address == IOL_DIR_PARAMA_MASTER_CMD)
+   {
       if (value == IOL_MASTERCMD_DEVICE_IDENT)
          mock_iolink_restart_device_cnt++;
       else if (value == IOL_MASTERCMD_MASTER_IDENT)
@@ -164,12 +167,14 @@ iolink_error_t mock_DL_Read_req (iolink_port_t * port, uint8_t address)
    }
    DL_Read_cnf (port, data, IOLINK_STATUS_NO_ERROR);
 
-   //IOLINK_DL_EVENT_TIMEOUT;
+   // IOLINK_DL_EVENT_TIMEOUT;
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t mock_DL_SetMode_req (iolink_port_t * port, iolink_dl_mode_t mode,
-                                    iolink_mode_vl_t *valuelist)
+iolink_error_t mock_DL_SetMode_req (
+   iolink_port_t * port,
+   iolink_dl_mode_t mode,
+   iolink_mode_vl_t * valuelist)
 {
    switch (mode)
    {
@@ -185,8 +190,9 @@ iolink_error_t mock_DL_SetMode_req (iolink_port_t * port, iolink_dl_mode_t mode,
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t mock_DL_Write_Devicemode_req (iolink_port_t * port,
-                                             iolink_dl_mode_t devicemode)
+iolink_error_t mock_DL_Write_Devicemode_req (
+   iolink_port_t * port,
+   iolink_dl_mode_t devicemode)
 {
    switch (devicemode)
    {
@@ -205,12 +211,13 @@ iolink_error_t mock_DL_Write_Devicemode_req (iolink_port_t * port,
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t mock_DL_ISDUTransport_req (iolink_port_t * port,
-                                          iolink_isdu_vl_t *valuelist)
+iolink_error_t mock_DL_ISDUTransport_req (
+   iolink_port_t * port,
+   iolink_isdu_vl_t * valuelist)
 {
    if (valuelist->readwrite == IOLINK_RWDIRECTION_WRITE)
    {
-      if (valuelist->length <= sizeof(mock_iolink_al_data))
+      if (valuelist->length <= sizeof (mock_iolink_al_data))
       {
          mock_iolink_al_data_len = valuelist->length;
          memcpy (mock_iolink_al_data, valuelist->data_write, valuelist->length);
@@ -222,7 +229,6 @@ iolink_error_t mock_DL_ISDUTransport_req (iolink_port_t * port,
    }
    else if (valuelist->readwrite == IOLINK_RWDIRECTION_READ)
    {
-
    }
    else
    {
@@ -242,26 +248,31 @@ iolink_error_t mock_DL_ReadParam_req (iolink_port_t * port, uint8_t address)
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t mock_DL_WriteParam_req (iolink_port_t * port, uint8_t address,
-                                       uint8_t value)
+iolink_error_t mock_DL_WriteParam_req (
+   iolink_port_t * port,
+   uint8_t address,
+   uint8_t value)
 {
    mock_iolink_al_data_len = 1;
-   mock_iolink_al_data[0] = value;
+   mock_iolink_al_data[0]  = value;
 
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t mock_DL_Control_req (iolink_port_t * port,
-                              iolink_controlcode_t controlcode,
-                              void (*dl_control_cnf_cb)(iolink_port_t * port))
+iolink_error_t mock_DL_Control_req (
+   iolink_port_t * port,
+   iolink_controlcode_t controlcode,
+   void (*dl_control_cnf_cb) (iolink_port_t * port))
 {
    mock_iolink_dl_control_req_cnt++;
 
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t mock_DL_PDOutputGet_req (iolink_port_t * port, uint8_t * len,
-                                        uint8_t * data)
+iolink_error_t mock_DL_PDOutputGet_req (
+   iolink_port_t * port,
+   uint8_t * len,
+   uint8_t * data)
 {
    *len = mock_iolink_dl_pdout_data_len;
    memcpy (data, mock_iolink_dl_pdout_data, *len);
@@ -269,25 +280,36 @@ iolink_error_t mock_DL_PDOutputGet_req (iolink_port_t * port, uint8_t * len,
    return IOLINK_ERROR_NONE;
 }
 
-void mock_PL_SetMode_req (iolink_port_t * port, iolink_pl_mode_t mode) {}
-void mock_iolink_pl_init (iolink_port_t * port, const char * name) {}
+void mock_PL_SetMode_req (iolink_port_t * port, iolink_pl_mode_t mode)
+{
+}
+void mock_iolink_pl_init (iolink_port_t * port, const char * name)
+{
+}
 
-iolink_error_t mock_AL_Read_req (iolink_port_t * port, uint16_t index,
-                     uint8_t subindex,
-                     void (*al_read_cnf_cb)(iolink_port_t * port,
-                                            uint8_t len, uint8_t * data,
-                                            iolink_smi_errortypes_t errortype))
+iolink_error_t mock_AL_Read_req (
+   iolink_port_t * port,
+   uint16_t index,
+   uint8_t subindex,
+   void (*al_read_cnf_cb) (
+      iolink_port_t * port,
+      uint8_t len,
+      uint8_t * data,
+      iolink_smi_errortypes_t errortype))
 {
    mock_iolink_al_read_cnf_cb = al_read_cnf_cb;
    mock_iolink_al_read_req_cnt++;
-   mock_iolink_al_data_index = index;
+   mock_iolink_al_data_index    = index;
    mock_iolink_al_data_subindex = subindex;
 
    return IOLINK_ERROR_NONE;
 }
 
-void mock_AL_Read_cnf (iolink_port_t * port, uint8_t len, const uint8_t * data,
-                       iolink_smi_errortypes_t errortype)
+void mock_AL_Read_cnf (
+   iolink_port_t * port,
+   uint8_t len,
+   const uint8_t * data,
+   iolink_smi_errortypes_t errortype)
 {
    if (errortype == IOLINK_SMI_ERRORTYPE_NONE)
    {
@@ -298,24 +320,28 @@ void mock_AL_Read_cnf (iolink_port_t * port, uint8_t len, const uint8_t * data,
    mock_iolink_al_read_errortype = errortype;
 }
 
-void mock_AL_Event_ind (iolink_port_t * port, uint8_t event_cnt,
-                        diag_entry_t events[6])
+void mock_AL_Event_ind (
+   iolink_port_t * port,
+   uint8_t event_cnt,
+   diag_entry_t events[6])
 {
    mock_iolink_al_event_cnt = event_cnt;
-   memcpy (mock_iolink_al_events, events, event_cnt * sizeof(diag_entry_t));
+   memcpy (mock_iolink_al_events, events, event_cnt * sizeof (diag_entry_t));
 }
 
-iolink_error_t mock_AL_Write_req (iolink_port_t * port, uint16_t index,
-                        uint8_t subindex, uint8_t len,
-                        const uint8_t * data,
-                        void (*al_write_cb)(iolink_port_t * port,
-                                            iolink_smi_errortypes_t errortype))
+iolink_error_t mock_AL_Write_req (
+   iolink_port_t * port,
+   uint16_t index,
+   uint8_t subindex,
+   uint8_t len,
+   const uint8_t * data,
+   void (*al_write_cb) (iolink_port_t * port, iolink_smi_errortypes_t errortype))
 {
    mock_iolink_al_write_req_cnt++;
    mock_iolink_al_write_cnf_cb = al_write_cb;
 
    memcpy (mock_iolink_al_data, data, len);
-   mock_iolink_al_data_index = index;
+   mock_iolink_al_data_index    = index;
    mock_iolink_al_data_subindex = subindex;
 
    return IOLINK_ERROR_NONE;
@@ -327,8 +353,9 @@ void mock_AL_Write_cnf (iolink_port_t * port, iolink_smi_errortypes_t errortype)
    mock_iolink_al_write_errortype = errortype;
 }
 
-iolink_error_t mock_AL_Control_req (iolink_port_t * port,
-                              iolink_controlcode_t controlcode)
+iolink_error_t mock_AL_Control_req (
+   iolink_port_t * port,
+   iolink_controlcode_t controlcode)
 {
    mock_iolink_al_control_req_cnt++;
    mock_iolink_controlcode = controlcode;
@@ -336,8 +363,9 @@ iolink_error_t mock_AL_Control_req (iolink_port_t * port,
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t mock_AL_Control_ind (iolink_port_t * port,
-                                    iolink_controlcode_t controlcode)
+iolink_error_t mock_AL_Control_ind (
+   iolink_port_t * port,
+   iolink_controlcode_t controlcode)
 {
    mock_iolink_al_control_ind_cnt++;
    mock_iolink_controlcode = controlcode;
@@ -345,10 +373,12 @@ iolink_error_t mock_AL_Control_ind (iolink_port_t * port,
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t mock_AL_SetOutput_req (iolink_port_t * port, uint8_t len,
-                                      uint8_t * data)
+iolink_error_t mock_AL_SetOutput_req (
+   iolink_port_t * port,
+   uint8_t len,
+   uint8_t * data)
 {
-   if (len <= sizeof(mock_iolink_dl_pdout_data))
+   if (len <= sizeof (mock_iolink_dl_pdout_data))
    {
       mock_iolink_dl_pdout_data_len = len;
       memcpy (mock_iolink_dl_pdout_data, data, len);
@@ -362,8 +392,10 @@ iolink_error_t mock_AL_SetOutput_req (iolink_port_t * port, uint8_t len,
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t mock_AL_GetInput_req (iolink_port_t * port, uint8_t * len,
-                                         uint8_t * data)
+iolink_error_t mock_AL_GetInput_req (
+   iolink_port_t * port,
+   uint8_t * len,
+   uint8_t * data)
 {
    *len = mock_iolink_dl_pdin_data_len;
    memcpy (data, mock_iolink_dl_pdin_data, *len);
@@ -372,8 +404,10 @@ iolink_error_t mock_AL_GetInput_req (iolink_port_t * port, uint8_t * len,
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t mock_AL_GetInputOutput_req (iolink_port_t * port, uint8_t * len,
-                                           uint8_t * data)
+iolink_error_t mock_AL_GetInputOutput_req (
+   iolink_port_t * port,
+   uint8_t * len,
+   uint8_t * data)
 {
    uint8_t pdin_len;
    uint8_t * pdin_data;
@@ -382,7 +416,7 @@ iolink_error_t mock_AL_GetInputOutput_req (iolink_port_t * port, uint8_t * len,
 
    /* PDIn data length */
    pdin_len = mock_iolink_dl_pdin_data_len;
-   data[0] = pdin_len;
+   data[0]  = pdin_len;
    /* PDIn_data[0] */
    pdin_data = &data[1];
    memcpy (pdin_data, mock_iolink_dl_pdin_data, pdin_len);
@@ -408,10 +442,12 @@ iolink_error_t mock_AL_NewInput_ind (iolink_port_t * port)
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t mock_DL_PDOutputUpdate_req (iolink_port_t * port, uint8_t len,
-                                           uint8_t *outputdata)
+iolink_error_t mock_DL_PDOutputUpdate_req (
+   iolink_port_t * port,
+   uint8_t len,
+   uint8_t * outputdata)
 {
-   if (len <= sizeof(mock_iolink_dl_pdout_data))
+   if (len <= sizeof (mock_iolink_dl_pdout_data))
    {
       mock_iolink_dl_pdout_data_len = len;
       memcpy (mock_iolink_dl_pdout_data, outputdata, len);
@@ -435,14 +471,14 @@ void mock_SM_PortMode_ind (iolink_port_t * port, iolink_sm_portmode_t mode)
    mock_iolink_sm_portmode = mode;
 }
 
-iolink_error_t mock_SM_SetPortConfig_req (iolink_port_t * port,
-                                    iolink_smp_parameterlist_t * parameterlist)
+iolink_error_t mock_SM_SetPortConfig_req (
+   iolink_port_t * port,
+   iolink_smp_parameterlist_t * parameterlist)
 {
-   iolink_sm_port_t * sm = iolink_get_sm_ctx (port);
+   iolink_sm_port_t * sm                       = iolink_get_sm_ctx (port);
    iolink_smp_parameterlist_t * real_paramlist = &sm->real_paramlist;
 
-   memcpy (&mock_iolink_cfg_paraml, parameterlist,
-           sizeof(mock_iolink_cfg_paraml));
+   memcpy (&mock_iolink_cfg_paraml, parameterlist, sizeof (mock_iolink_cfg_paraml));
 
    switch (mock_iolink_trans_rate)
    {
@@ -538,9 +574,12 @@ iolink_error_t mock_PD_Stop (iolink_port_t * port)
    return IOLINK_ERROR_NONE;
 }
 
-void mock_SMI_cnf (void * arg, uint8_t portnumber,
-                   iolink_arg_block_id_t ref_arg_block_id,
-                   uint16_t arg_block_len, arg_block_t * arg_block)
+void mock_SMI_cnf (
+   void * arg,
+   uint8_t portnumber,
+   iolink_arg_block_id_t ref_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
    iolink_arg_block_id_t arg_block_id = arg_block->void_block.arg_block_id;
 
@@ -549,7 +588,7 @@ void mock_SMI_cnf (void * arg, uint8_t portnumber,
    else if (ref_arg_block_id == IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST)
       mock_iolink_smi_portcfg_cnf_cnt++;
    else if (arg_block_id == IOLINK_ARG_BLOCK_ID_PORT_STATUS_LIST)
-     mock_iolink_smi_portstatus_cnf_cnt++;
+      mock_iolink_smi_portstatus_cnf_cnt++;
    else if (arg_block_id == IOLINK_ARG_BLOCK_ID_PORT_EVENT)
       mock_iolink_smi_portevent_ind_cnt++;
    else
@@ -557,12 +596,11 @@ void mock_SMI_cnf (void * arg, uint8_t portnumber,
 
    memcpy (mock_iolink_smi_arg_block, arg_block, arg_block_len);
 
-   mock_iolink_smi_arg_block_len = arg_block_len;
+   mock_iolink_smi_arg_block_len    = arg_block_len;
    mock_iolink_smi_ref_arg_block_id = ref_arg_block_id;
 }
 
-static bool mock_os_mbox_post (os_mbox_t * mbox, void * msg,
-                                      uint32_t time)
+static bool mock_os_mbox_post (os_mbox_t * mbox, void * msg, uint32_t time)
 {
    iolink_job_t * job = (iolink_job_t *)msg;
 

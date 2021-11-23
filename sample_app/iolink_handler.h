@@ -16,8 +16,8 @@
 #include "sys/osal_sys.h"
 #include "iolink.h"
 
-#define MASTER_VENDOR_ID        1171
-#define MASTER_ID               123
+#define MASTER_VENDOR_ID 1171
+#define MASTER_ID        123
 
 typedef enum
 {
@@ -95,7 +95,7 @@ typedef struct iolink_app_port_ctx
    {
       uint16_t data_len;
    } param_read;
-   os_mutex_t *pdout_mtx;
+   os_mutex_t * pdout_mtx;
    void (*run_function) (iolink_app_port_ctx_t * app_port);
 #ifdef __rtk__
    bool alarm_active;
@@ -115,8 +115,11 @@ iolink_app_master_ctx_t iolink_app_master;
 
 void iolink_handler (iolink_m_cfg_t m_cfg);
 
-iolink_smi_errortypes_t wait_for_cnf(iolink_app_port_ctx_t * app_port, uint32_t mask, uint32_t ms);
+iolink_smi_errortypes_t wait_for_cnf (
+   iolink_app_port_ctx_t * app_port,
+   uint32_t mask,
+   uint32_t ms);
 
 uint8_t get_port_status (iolink_app_port_ctx_t * app_port);
 
-#endif  // IOLINK_HANDLER_H
+#endif // IOLINK_HANDLER_H

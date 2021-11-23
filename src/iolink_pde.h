@@ -10,7 +10,6 @@
  * See LICENSE file in the project root for full license information.
  ********************************************************************/
 
-
 #ifndef IOLINK_PDE_H
 #define IOLINK_PDE_H
 
@@ -18,8 +17,7 @@
 #include "iolink_types.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /**
@@ -43,26 +41,29 @@ void iolink_pde_init (iolink_port_t * port);
 iolink_error_t PD_Start (iolink_port_t * port);
 iolink_error_t PD_Stop (iolink_port_t * port);
 iolink_error_t AL_NewInput_ind (iolink_port_t * port);
-iolink_error_t AL_Control_ind (iolink_port_t * port,
-                               iolink_controlcode_t controlcode);
+iolink_error_t AL_Control_ind (
+   iolink_port_t * port,
+   iolink_controlcode_t controlcode);
 
-iolink_error_t pde_SMI_PDIn_req (iolink_port_t * port,
-                             iolink_arg_block_id_t exp_arg_block_id,
-                             uint16_t arg_block_len,
-                             arg_block_t * arg_block);
+iolink_error_t pde_SMI_PDIn_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 
-iolink_error_t pde_SMI_PDOut_req (iolink_port_t * port,
-                              iolink_arg_block_id_t exp_arg_block_id,
-                              uint16_t arg_block_len,
-                              arg_block_t * arg_block);
+iolink_error_t pde_SMI_PDOut_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 
-iolink_error_t pde_SMI_PDInOut_req (iolink_port_t * port,
-                                iolink_arg_block_id_t exp_arg_block_id,
-                                uint16_t arg_block_len,
-                                arg_block_t * arg_block);
+iolink_error_t pde_SMI_PDInOut_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* IOLINK_PDE_H */
-

@@ -20,15 +20,14 @@
 #else
 #include "osal_fileops.h"
 #endif
-#include <fcntl.h> /* O_RDWR */
+#include <fcntl.h>  /* O_RDWR */
 #include <unistd.h> /* close */
 
 #include "iolink_types.h"
 #include "iolink.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /**
@@ -75,18 +74,19 @@ void iolink_pl_hw_enable_cycle_timer (int fd);
 
 void iolink_pl_hw_disable_cycle_timer (int fd);
 
-void iolink_pl_hw_get_data(int fd, uint8_t *rxdata, uint8_t len);
-void iolink_pl_hw_get_error (int fd, uint8_t *cqerr, uint8_t *devdly);
+void iolink_pl_hw_get_data (int fd, uint8_t * rxdata, uint8_t len);
+void iolink_pl_hw_get_error (int fd, uint8_t * cqerr, uint8_t * devdly);
 void iolink_pl_hw_send_msg (int fd);
-void iolink_pl_hw_dl_msg (int fd, uint8_t rxbytes, uint8_t txbytes,
-                          uint8_t *data);
-void iolink_pl_hw_transfer_req (int fd, uint8_t rxbytes, uint8_t txbytes,
-                                uint8_t *data);
+void iolink_pl_hw_dl_msg (int fd, uint8_t rxbytes, uint8_t txbytes, uint8_t * data);
+void iolink_pl_hw_transfer_req (
+   int fd,
+   uint8_t rxbytes,
+   uint8_t txbytes,
+   uint8_t * data);
 
 bool iolink_pl_hw_init_sdci (int fd);
 
-void iolink_pl_hw_configure_event (int fd, os_event_t * event,
-                                   uint32_t flag);
+void iolink_pl_hw_configure_event (int fd, os_event_t * event, uint32_t flag);
 
 void iolink_pl_hw_pl_handler (int fd);
 

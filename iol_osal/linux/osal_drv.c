@@ -18,22 +18,23 @@
 #include <string.h>
 #define DRIVERS_SIZE 4
 
-typedef struct {
-  int fd;
-  drv_t *drv;
-  void * arg;
+typedef struct
+{
+   int fd;
+   drv_t * drv;
+   void * arg;
 } drv_list_t;
 
 drv_list_t drivers[DRIVERS_SIZE] = {0};
 
-drv_t * fd_get_driver(int fd)
+drv_t * fd_get_driver (int fd)
 {
    int i;
    for (i = 0; i < DRIVERS_SIZE; i++)
    {
-      if (drivers[i].fd == fd )
+      if (drivers[i].fd == fd)
       {
-          return drivers[i].drv;
+         return drivers[i].drv;
       }
       else if (drivers[i].fd == 0)
       {
@@ -43,14 +44,14 @@ drv_t * fd_get_driver(int fd)
    return NULL;
 }
 
-void * fd_get_arg(int fd)
+void * fd_get_arg (int fd)
 {
    int i;
    for (i = 0; i < DRIVERS_SIZE; i++)
    {
-      if (drivers[i].fd == fd )
+      if (drivers[i].fd == fd)
       {
-          return drivers[i].arg;
+         return drivers[i].arg;
       }
       else if (drivers[i].fd == 0)
       {
@@ -60,24 +61,24 @@ void * fd_get_arg(int fd)
    return NULL;
 }
 
-int fd_set_driver(int fd, drv_t * drv, void * arg)
+int fd_set_driver (int fd, drv_t * drv, void * arg)
 {
    int i;
    for (i = 0; i < DRIVERS_SIZE; i++)
    {
-      if ( drivers[i].fd == 0 )
+      if (drivers[i].fd == 0)
       {
-         drivers[i].fd = fd;
+         drivers[i].fd  = fd;
          drivers[i].drv = drv;
          drivers[i].arg = arg;
-         drv->mtx           = os_mutex_create();
+         drv->mtx       = os_mutex_create();
          return 0;
       }
    }
    return -1;
 }
 
-drv_t * find_driver_by_name(const char * name)
+drv_t * find_driver_by_name (const char * name)
 {
    int i;
    for (i = 0; i < DRIVERS_SIZE; i++)
@@ -93,4 +94,3 @@ drv_t * find_driver_by_name(const char * name)
    }
    return NULL;
 }
-

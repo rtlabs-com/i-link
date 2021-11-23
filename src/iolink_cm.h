@@ -17,8 +17,7 @@
 #include "iolink_main.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /**
@@ -53,21 +52,23 @@ typedef struct iolink_cm_port
 typedef enum iolink_fsm_cm_event
 {
    CM_EVENT_NONE,
-   CM_EVENT_IOL_MANUAL,     /* T1 */
-   CM_EVENT_IOL_AUTOSTART,  /* T2 */
-   CM_EVENT_SM_COMREADY,    /* T3 */
-   CM_EVENT_SM_FAULT,       /* T4 */
-   CM_EVENT_DS_Ready,       /* T5 */
-   CM_EVENT_DS_Fault,       /* T6 */
-   CM_EVENT_SM_OPERATE,     /* T7 */
-   CM_EVENT_SM_COMLOST,     /* T8 */
-   CM_EVENT_DI_CQ,          /* T9 */ // TODO merge
-   CM_EVENT_DO_CQ,         /* T10 */ // TODO merge
+   CM_EVENT_IOL_MANUAL,    /* T1 */
+   CM_EVENT_IOL_AUTOSTART, /* T2 */
+   CM_EVENT_SM_COMREADY,   /* T3 */
+   CM_EVENT_SM_FAULT,      /* T4 */
+   CM_EVENT_DS_Ready,      /* T5 */
+   CM_EVENT_DS_Fault,      /* T6 */
+   CM_EVENT_SM_OPERATE,    /* T7 */
+   CM_EVENT_SM_COMLOST,    /* T8 */
+   CM_EVENT_DI_CQ,
+   /* T9 */ // TODO merge
+   CM_EVENT_DO_CQ,
+   /* T10 */               // TODO merge
    CM_EVENT_DEACTIVATED,   /* T11 */
    CM_EVENT_CFG_CHANGE,    /* T12, T13 and T15 */
    CM_EVENT_DS_CHANGE,     /* T14 */
    CM_EVENT_UNKNOWN,       /* T16 */
-   CM_EVENT_SM_COMLOST_DS,  /* T8 */
+   CM_EVENT_SM_COMLOST_DS, /* T8 */
    CM_EVENT_LAST
 } iolink_fsm_cm_event_t;
 
@@ -79,25 +80,29 @@ void DS_Ready (iolink_port_t * port);
 void DS_Change (iolink_port_t * port);
 void DS_Fault (iolink_port_t * port, iolink_ds_fault_t fault);
 
-iolink_error_t cm_SMI_MasterIdentification_req (iolink_port_t * port,
-                                         iolink_arg_block_id_t exp_arg_block_id,
-                                         uint16_t arg_block_len,
-                                         arg_block_t * arg_block);
+iolink_error_t cm_SMI_MasterIdentification_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 
-iolink_error_t cm_SMI_PortConfiguration_req (iolink_port_t * port,
-                                       iolink_arg_block_id_t exp_arg_block_id,
-                                       uint16_t arg_block_len,
-                                       arg_block_t * arg_block);
+iolink_error_t cm_SMI_PortConfiguration_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 
-iolink_error_t cm_SMI_ReadbackPortConfiguration_req (iolink_port_t * port,
-                                       iolink_arg_block_id_t exp_arg_block_id,
-                                       uint16_t arg_block_len,
-                                       arg_block_t * arg_block);
+iolink_error_t cm_SMI_ReadbackPortConfiguration_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 
-iolink_error_t cm_SMI_PortStatus_req (iolink_port_t * port,
-                                      iolink_arg_block_id_t exp_arg_block_id,
-                                      uint16_t arg_block_len,
-                                      arg_block_t * arg_block);
+iolink_error_t cm_SMI_PortStatus_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 
 #ifdef __cplusplus
 }

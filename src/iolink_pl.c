@@ -21,21 +21,23 @@
  *
  */
 
-#define IOLINK_RXERR_CHKSM    BIT(0)
-#define IOLINK_RXERR_SIZE     BIT(1)
-#define IOLINK_RXERR_FRAME    BIT(2)
-#define IOLINK_RXERR_PARITY   BIT(3)
-#define IOLINK_RXERR_TDLY     BIT(4)
-#define IOLINK_TXERR_TRANSM   BIT(5)
-#define IOLINK_TXERR_CYCL     BIT(6)
-#define IOLINK_TXERR_CHKSM    BIT(7)
-#define IOLINK_TXERR_SIZE     BIT(8)
+#define IOLINK_RXERR_CHKSM  BIT (0)
+#define IOLINK_RXERR_SIZE   BIT (1)
+#define IOLINK_RXERR_FRAME  BIT (2)
+#define IOLINK_RXERR_PARITY BIT (3)
+#define IOLINK_RXERR_TDLY   BIT (4)
+#define IOLINK_TXERR_TRANSM BIT (5)
+#define IOLINK_TXERR_CYCL   BIT (6)
+#define IOLINK_TXERR_CHKSM  BIT (7)
+#define IOLINK_TXERR_SIZE   BIT (8)
 
 /*
  * Wrapper functions
  */
-void iolink_configure_pl_event (iolink_port_t * port, os_event_t * event,
-                                uint32_t flag)
+void iolink_configure_pl_event (
+   iolink_port_t * port,
+   os_event_t * event,
+   uint32_t flag)
 {
    iolink_pl_port_t * pl = iolink_get_pl_ctx (port);
 
@@ -74,11 +76,10 @@ void iolink_pl_get_data (iolink_port_t * port, uint8_t * rxdata, uint8_t len)
 {
    iolink_pl_port_t * pl = iolink_get_pl_ctx (port);
 
-   iolink_pl_hw_get_data(pl->fd, rxdata, len);
+   iolink_pl_hw_get_data (pl->fd, rxdata, len);
 }
 
-void iolink_pl_get_error (iolink_port_t * port, uint8_t * cqerr,
-                          uint8_t * devdly)
+void iolink_pl_get_error (iolink_port_t * port, uint8_t * cqerr, uint8_t * devdly)
 {
    iolink_pl_port_t * pl = iolink_get_pl_ctx (port);
 
@@ -112,15 +113,21 @@ void PL_Resend (iolink_port_t * port)
 
    iolink_pl_hw_send_msg (pl->fd);
 }
-void PL_Transfer_req (iolink_port_t * port, uint8_t rxbytes, uint8_t txbytes,
-                      uint8_t * data)
+void PL_Transfer_req (
+   iolink_port_t * port,
+   uint8_t rxbytes,
+   uint8_t txbytes,
+   uint8_t * data)
 {
    iolink_pl_port_t * pl = iolink_get_pl_ctx (port);
 
    iolink_pl_hw_transfer_req (pl->fd, rxbytes, txbytes, data);
 }
-void PL_MessageDownload_req (iolink_port_t * port, uint8_t rxbytes,
-                             uint8_t txbytes, uint8_t * data)
+void PL_MessageDownload_req (
+   iolink_port_t * port,
+   uint8_t rxbytes,
+   uint8_t txbytes,
+   uint8_t * data)
 {
    iolink_pl_port_t * pl = iolink_get_pl_ctx (port);
 
@@ -148,7 +155,7 @@ void iolink_pl_init (iolink_port_t * port, const char * name)
 {
    iolink_pl_port_t * pl = iolink_get_pl_ctx (port);
 
-   memset (pl, 0, sizeof(iolink_pl_port_t));
+   memset (pl, 0, sizeof (iolink_pl_port_t));
    pl->fd = iolink_pl_hw_open (name);
    CC_ASSERT (pl->fd > 0);
 }

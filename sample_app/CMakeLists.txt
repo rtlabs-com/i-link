@@ -10,10 +10,6 @@
 # See LICENSE file in the project root for full license information.
 #*******************************************************************/
 
-add_executable(spi_test
-  util/spidev_test.c
-  )
-
 add_executable(irq_test
   util/irq_test.c
   )

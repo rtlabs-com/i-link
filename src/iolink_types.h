@@ -23,13 +23,13 @@
 
 #define IOLINK_RXTX_BUFFER_SIZE 64
 
-#define IOLINK_OD_MAX_SIZE    32
-#define IOLINK_ISDU_MAX_DATA_SIZE  238
+#define IOLINK_OD_MAX_SIZE        32
+#define IOLINK_ISDU_MAX_DATA_SIZE 238
 /* I-Service and len + ExtLen + CHKPDU = 3 */
-#define IOLINK_ISDU_MAX_SIZE  (IOLINK_ISDU_MAX_DATA_SIZE + 3)
+#define IOLINK_ISDU_MAX_SIZE (IOLINK_ISDU_MAX_DATA_SIZE + 3)
 
-#define IOL_DIR_PARAM_REV_V10      0x10
-#define IOL_DIR_PARAM_REV_V11      0x11
+#define IOL_DIR_PARAM_REV_V10 0x10
+#define IOL_DIR_PARAM_REV_V11 0x11
 
 typedef enum
 {
@@ -43,7 +43,7 @@ typedef enum
 
 typedef enum
 {
-   IOLINK_SMTARGET_MODE_CFGCOM=0,
+   IOLINK_SMTARGET_MODE_CFGCOM = 0,
    IOLINK_SMTARGET_MODE_AUTOCOM,
    IOLINK_SMTARGET_MODE_INACTIVE,
    IOLINK_SMTARGET_MODE_DI,
@@ -71,8 +71,9 @@ typedef enum
 {
    IOLINK_INSPECTIONLEVEL_NO_CHECK,
    IOLINK_INSPECTIONLEVEL_TYPE_COMP,
-   IOLINK_INSPECTIONLEVEL_IDENTICAL, /* NOTE: IO-Link Interface Spec v1.1.3 Chapter 9.2.2.2
-                                      *       Optional, not recommended for new developments
+   IOLINK_INSPECTIONLEVEL_IDENTICAL, /* NOTE: IO-Link Interface Spec v1.1.3
+                                      * Chapter 9.2.2.2 Optional, not
+                                      * recommended for new developments
                                       */
 } iolink_inspectionlevel_t;
 
@@ -124,16 +125,16 @@ typedef enum
 
 typedef enum
 {
-   IOLINK_RWDIRECTION_READ    = 0x80,
-   IOLINK_RWDIRECTION_WRITE   = 0x00,
+   IOLINK_RWDIRECTION_READ  = 0x80,
+   IOLINK_RWDIRECTION_WRITE = 0x00,
 } iolink_rwdirection_t;
 
 typedef enum
 {
-   IOLINK_COMCHANNEL_PROCESS     = 0x00,
-   IOLINK_COMCHANNEL_PAGE        = 0x20,
-   IOLINK_COMCHANNEL_DIAGNOSIS   = 0x40,
-   IOLINK_COMCHANNEL_ISDU        = 0x60,
+   IOLINK_COMCHANNEL_PROCESS   = 0x00,
+   IOLINK_COMCHANNEL_PAGE      = 0x20,
+   IOLINK_COMCHANNEL_DIAGNOSIS = 0x40,
+   IOLINK_COMCHANNEL_ISDU      = 0x60,
 } iolink_comchannel_t;
 
 typedef enum
@@ -146,20 +147,20 @@ typedef enum
 
 typedef enum
 {
-   IOLINK_MSEQTYPE_TYPE_NONE  = 0x00,
-   IOLINK_MSEQTYPE_TYPE_0     = 0x01,
-   IOLINK_MSEQTYPE_TYPE_1_1   = 0x11,
-   IOLINK_MSEQTYPE_TYPE_1_2   = 0x12,
-   IOLINK_MSEQTYPE_TYPE_1_V   = 0x1E,
-   IOLINK_MSEQTYPE_TYPE_1_X   = 0x1F,
-   IOLINK_MSEQTYPE_TYPE_2_1   = 0x21,
-   IOLINK_MSEQTYPE_TYPE_2_2   = 0x22,
-   IOLINK_MSEQTYPE_TYPE_2_3   = 0x23,
-   IOLINK_MSEQTYPE_TYPE_2_4   = 0x24,
-   IOLINK_MSEQTYPE_TYPE_2_5   = 0x25,
-   //IOLINK_MSEQTYPE_TYPE_2_6   = 0x26,
-   IOLINK_MSEQTYPE_TYPE_2_V   = 0x2E,
-   IOLINK_MSEQTYPE_TYPE_2_X   = 0x2F,
+   IOLINK_MSEQTYPE_TYPE_NONE = 0x00,
+   IOLINK_MSEQTYPE_TYPE_0    = 0x01,
+   IOLINK_MSEQTYPE_TYPE_1_1  = 0x11,
+   IOLINK_MSEQTYPE_TYPE_1_2  = 0x12,
+   IOLINK_MSEQTYPE_TYPE_1_V  = 0x1E,
+   IOLINK_MSEQTYPE_TYPE_1_X  = 0x1F,
+   IOLINK_MSEQTYPE_TYPE_2_1  = 0x21,
+   IOLINK_MSEQTYPE_TYPE_2_2  = 0x22,
+   IOLINK_MSEQTYPE_TYPE_2_3  = 0x23,
+   IOLINK_MSEQTYPE_TYPE_2_4  = 0x24,
+   IOLINK_MSEQTYPE_TYPE_2_5  = 0x25,
+   // IOLINK_MSEQTYPE_TYPE_2_6   = 0x26,
+   IOLINK_MSEQTYPE_TYPE_2_V = 0x2E,
+   IOLINK_MSEQTYPE_TYPE_2_X = 0x2F,
 } iolink_msequencetype_t;
 
 typedef enum
@@ -188,28 +189,28 @@ typedef enum
 
 typedef enum
 {
-   IOLINK_EVENT_TYPE_RESERVED       = 0,
-   IOLINK_EVENT_TYPE_NOTIFICATION   = 1,
-   IOLINK_EVENT_TYPE_WARNING        = 2,
-   IOLINK_EVENT_TYPE_ERROR          = 3,
+   IOLINK_EVENT_TYPE_RESERVED     = 0,
+   IOLINK_EVENT_TYPE_NOTIFICATION = 1,
+   IOLINK_EVENT_TYPE_WARNING      = 2,
+   IOLINK_EVENT_TYPE_ERROR        = 3,
 } iolink_event_type_t;
 
 typedef enum
 {
-   IOLINK_EVENT_INSTANCE_UNKNOWN       = 0,
-   IOLINK_EVENT_INSTANCE_RESERVED_1    = 1,
-   IOLINK_EVENT_INSTANCE_RESERVED_2    = 2,
-   IOLINK_EVENT_INSTANCE_RESERVED_3    = 3,
-   IOLINK_EVENT_INSTANCE_APPLICATION   = 4,
-   IOLINK_EVENT_INSTANCE_RESERVED_5    = 5,
-   IOLINK_EVENT_INSTANCE_RESERVED_6    = 6,
-   IOLINK_EVENT_INSTANCE_RESERVED_7    = 7,
+   IOLINK_EVENT_INSTANCE_UNKNOWN     = 0,
+   IOLINK_EVENT_INSTANCE_RESERVED_1  = 1,
+   IOLINK_EVENT_INSTANCE_RESERVED_2  = 2,
+   IOLINK_EVENT_INSTANCE_RESERVED_3  = 3,
+   IOLINK_EVENT_INSTANCE_APPLICATION = 4,
+   IOLINK_EVENT_INSTANCE_RESERVED_5  = 5,
+   IOLINK_EVENT_INSTANCE_RESERVED_6  = 6,
+   IOLINK_EVENT_INSTANCE_RESERVED_7  = 7,
 } iolink_event_instance_t;
 
 typedef enum
 {
    IOLINK_EVENT_SOURCE_DEVICE = 0,
-   IOLINK_EVENT_SOURCE_MASTER  = 1,
+   IOLINK_EVENT_SOURCE_MASTER = 1,
 } iolink_event_source_t;
 
 typedef enum
@@ -257,7 +258,7 @@ typedef struct
 
 typedef enum
 {
-   IOLINK_DS_FAULT_NONE=0,
+   IOLINK_DS_FAULT_NONE = 0,
    IOLINK_DS_FAULT_ID,
    IOLINK_DS_FAULT_SIZE,
    IOLINK_DS_FAULT_UP,
@@ -312,4 +313,4 @@ typedef union
       iolink_master_mbox_trigger_t trigger;
    };
 } iolink_master_mbox_payload_t;
-#endif  /* IOLINK_TYPES_H */
+#endif /* IOLINK_TYPES_H */

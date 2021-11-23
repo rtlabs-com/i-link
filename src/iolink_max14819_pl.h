@@ -10,7 +10,6 @@
  * See LICENSE file in the project root for full license information.
  ********************************************************************/
 
-
 #ifndef IOLINK_MAX14819_PL_H
 #define IOLINK_MAX14819_PL_H
 
@@ -22,16 +21,15 @@
 #include <dev.h>
 #include <gpio.h>
 // TODO: use include file instead?
-#define fd_get_driver(fd)  dev_get_driver(fd)
+#define fd_get_driver(fd) dev_get_driver (fd)
 #endif /* __rtk__ */
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define MAX14819_NUM_CHANNELS 2
-#define IOLINK14819_TX_MAX (66)
+#define IOLINK14819_TX_MAX    (66)
 
 #ifdef __linux__
 #include <osal_drv.h>
@@ -52,7 +50,7 @@ typedef struct iolink_14819_drv
 
    bool wurq_request[MAX14819_NUM_CHANNELS];
    bool is_iolink[MAX14819_NUM_CHANNELS];
-   os_mutex_t *exclusive;
+   os_mutex_t * exclusive;
 
    os_event_t * dl_event[MAX14819_NUM_CHANNELS];
 #ifdef __rtk__

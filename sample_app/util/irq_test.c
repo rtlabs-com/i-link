@@ -24,9 +24,9 @@
 #include <stdbool.h>
 
 #define SYSFS_GPIO_DIR "/sys/class/gpio"
-#define MAX_BUF 64
+#define MAX_BUF        64
 
-typedef void(*isr_func_t)(int pin);
+typedef void (*isr_func_t) (int pin);
 
 typedef struct
 {
@@ -36,49 +36,49 @@ typedef struct
    pthread_mutex_t mtx;
 } irq_thread_t;
 
-void isr_func(int pin)
+void isr_func (int pin)
 {
-   printf("\n%s: GPIO pin %d interrupt occurred\n", __func__, pin);
+   printf ("\n%s: GPIO pin %d interrupt occurred\n", __func__, pin);
 }
 
-void *irq_thread(void *arg)
+void * irq_thread (void * arg)
 {
-   irq_thread_t *irq = (irq_thread_t *)arg;
+   irq_thread_t * irq = (irq_thread_t *)arg;
    struct pollfd p_fd;
    char buf[MAX_BUF];
 
    while (true)
    {
-      memset(&p_fd, 0, sizeof(p_fd));
+      memset (&p_fd, 0, sizeof (p_fd));
 
-      p_fd.fd = irq->fd;
+      p_fd.fd     = irq->fd;
       p_fd.events = POLLPRI;
 
-      int rc = poll(&p_fd, 1, 5000);
+      int rc = poll (&p_fd, 1, 5000);
 
       if (rc < 0)
       {
-         printf("\npoll() failed!\n");
+         printf ("\npoll() failed!\n");
       }
       else if (rc == 0)
       {
-         printf(".");
+         printf (".");
       }
       else if (p_fd.revents & POLLPRI)
       {
-         lseek(p_fd.fd, 0, SEEK_SET);
-         int len = read(p_fd.fd, buf, MAX_BUF);
+         lseek (p_fd.fd, 0, SEEK_SET);
+         int len = read (p_fd.fd, buf, MAX_BUF);
          (void)len;
-         irq->isr_func(irq->gpio);
+         irq->isr_func (irq->gpio);
       }
 
-      fflush(stdout);
+      fflush (stdout);
    }
 
    close (irq->fd);
 }
 
-pthread_t *setup_int(unsigned int gpio_pin, isr_func_t isr_func)
+pthread_t * setup_int (unsigned int gpio_pin, isr_func_t isr_func)
 {
    char buf[MAX_BUF];
    pthread_attr_t attr;
@@ -86,76 +86,76 @@ pthread_t *setup_int(unsigned int gpio_pin, isr_func_t isr_func)
    static irq_thread_t irqarg;
 
    // Add gpio_pin to exported pins
-   int fd = open(SYSFS_GPIO_DIR "/export", O_WRONLY);
+   int fd = open (SYSFS_GPIO_DIR "/export", O_WRONLY);
 
    if (fd < 0)
    {
-      perror("gpio/export");
+      perror ("gpio/export");
       return NULL;
    }
 
-   int n = write(fd, buf, snprintf(buf, sizeof(buf), "%d", gpio_pin));
-   close(fd);
+   int n = write (fd, buf, snprintf (buf, sizeof (buf), "%d", gpio_pin));
+   close (fd);
 
    if (n < 0)
    {
-      perror("setup_int(): Failed to write gpio_pin to gpio/export");
+      perror ("setup_int(): Failed to write gpio_pin to gpio/export");
    }
 
    // Set direction of pin to input
-   snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR  "/gpio%d/direction", gpio_pin);
-   fd = open(buf, O_WRONLY);
+   snprintf (buf, sizeof (buf), SYSFS_GPIO_DIR "/gpio%d/direction", gpio_pin);
+   fd = open (buf, O_WRONLY);
 
    if (fd < 0)
    {
-      perror("gpio/direction");
+      perror ("gpio/direction");
       return NULL;
    }
 
-   n = write(fd, "in", sizeof("in") + 1);
-   close(fd);
+   n = write (fd, "in", sizeof ("in") + 1);
+   close (fd);
 
    if (n < 0)
    {
-      perror("write direction");
+      perror ("write direction");
       return NULL;
    }
 
    // Set edge detection to falling
-   snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "/gpio%d/edge", gpio_pin);
-   fd = open(buf, O_WRONLY);
+   snprintf (buf, sizeof (buf), SYSFS_GPIO_DIR "/gpio%d/edge", gpio_pin);
+   fd = open (buf, O_WRONLY);
 
    if (fd < 0)
    {
-      perror("gpio/edge");
+      perror ("gpio/edge");
       return NULL;
    }
 
-   n = write(fd, "falling", sizeof("falling") + 1);
-   close(fd);
+   n = write (fd, "falling", sizeof ("falling") + 1);
+   close (fd);
 
    if (n < 0)
    {
-      perror("write edge");
+      perror ("write edge");
       return NULL;
    }
 
    // Open file and return file descriptor
-   snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "/gpio%d/value", gpio_pin);
-   fd = open(buf, O_RDONLY | O_NONBLOCK);
+   snprintf (buf, sizeof (buf), SYSFS_GPIO_DIR "/gpio%d/value", gpio_pin);
+   fd = open (buf, O_RDONLY | O_NONBLOCK);
 
    if (fd < 0)
    {
-      perror("gpio/value");
+      perror ("gpio/value");
       return NULL;
    }
 
    // Create isr service thread
    irqarg.isr_func = isr_func;
-   irqarg.fd = fd;
-   irqarg.gpio = gpio_pin;
-   pthread_attr_init(&attr);
-   pthread_create(&thread, &attr, irq_thread, &irqarg);
+   irqarg.fd       = fd;
+   irqarg.gpio     = gpio_pin;
+   pthread_attr_init (&attr);
+   pthread_create (&thread, &attr, irq_thread, &irqarg);
 
    return &thread;
 }
@@ -163,16 +163,17 @@ pthread_t *setup_int(unsigned int gpio_pin, isr_func_t isr_func)
 /****************************************************************
  * Main
  ****************************************************************/
-int main(int argc, char **argv)
+int main (int argc, char ** argv)
 {
    if (argc < 2)
    {
-      printf("Usage: %s <gpio-pin>\n\n", argv[0]);
-      printf("Waits for a change in the GPIO pin voltage level or input on stdin\n");
-      exit(-1);
+      printf ("Usage: %s <gpio-pin>\n\n", argv[0]);
+      printf ("Waits for a change in the GPIO pin voltage level or input on "
+              "stdin\n");
+      exit (-1);
    }
 
-   setup_int(atoi(argv[1]), isr_func);
+   setup_int (atoi (argv[1]), isr_func);
 
    while (true)
    {
