@@ -16,8 +16,7 @@
 #include <iolink_types.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 typedef struct iolink_dl iolink_dl_t;
@@ -30,18 +29,18 @@ typedef struct iolink_dl iolink_dl_t;
  *
  */
 
-#define IOLINK_PL_EVENT                BIT(0)
-#define IOLINK_PL_EVENT_RXRDY          BIT(1)
-#define IOLINK_PL_EVENT_RXERR          BIT(2)
-#define IOLINK_PL_EVENT_TXERR          BIT(3)
-#define IOLINK_PL_EVENT_WURQ           BIT(4)
-#define IOLINK_PL_EVENT_STATUS         BIT(5)
-#define IOLINK_DL_EVENT_TIMEOUT        BIT(10)
-#define IOLINK_DL_EVENT_TIMEOUT_TCYC   BIT(11)
+#define IOLINK_PL_EVENT              BIT (0)
+#define IOLINK_PL_EVENT_RXRDY        BIT (1)
+#define IOLINK_PL_EVENT_RXERR        BIT (2)
+#define IOLINK_PL_EVENT_TXERR        BIT (3)
+#define IOLINK_PL_EVENT_WURQ         BIT (4)
+#define IOLINK_PL_EVENT_STATUS       BIT (5)
+#define IOLINK_DL_EVENT_TIMEOUT      BIT (10)
+#define IOLINK_DL_EVENT_TIMEOUT_TCYC BIT (11)
 //#define IOLINK_DL_EVENT_ODH            BIT(12)
 //#define IOLINK_DL_EVENT_PDH            BIT(13)
-#define IOLINK_DL_EVENT_MDH            BIT(14)
-#define IOLINK_DL_EVENT_MH             BIT(15)
+#define IOLINK_DL_EVENT_MDH BIT (14)
+#define IOLINK_DL_EVENT_MH  BIT (15)
 
 typedef enum
 {
@@ -206,126 +205,126 @@ typedef enum
 
 typedef struct
 {
-   dl_pdh_st_t          state;
-   PHCmd_t              phcmd;
-   iol_trigger_t        trigger;
-   uint8_t              pd_address;
-   uint8_t              pd_rxlen;
-   uint8_t              pd_txlen;
-   uint8_t              pdoutdata[IOLINK_PD_MAX_SIZE];
-   uint8_t              pdindata[IOLINK_PD_MAX_SIZE];
-   uint8_t              *pdout_buffer;
-   bool                 pd_valid;
+   dl_pdh_st_t state;
+   PHCmd_t phcmd;
+   iol_trigger_t trigger;
+   uint8_t pd_address;
+   uint8_t pd_rxlen;
+   uint8_t pd_txlen;
+   uint8_t pdoutdata[IOLINK_PD_MAX_SIZE];
+   uint8_t pdindata[IOLINK_PD_MAX_SIZE];
+   uint8_t * pdout_buffer;
+   bool pd_valid;
 } pd_handler_t;
 
 typedef struct
 {
-   dl_odh_st_t          state;
-   OHCmd_t              ohcmd;
-   iol_trigger_t        trigger;
-   uint8_t              od_rxlen;
-   uint8_t              od_txlen;
-   uint8_t              data_addr;
-   uint8_t              data_value;
-   uint8_t              *odout_buffer;
+   dl_odh_st_t state;
+   OHCmd_t ohcmd;
+   iol_trigger_t trigger;
+   uint8_t od_rxlen;
+   uint8_t od_txlen;
+   uint8_t data_addr;
+   uint8_t data_value;
+   uint8_t * odout_buffer;
 } od_handler_t;
 
 typedef struct
 {
-   dl_mh_st_t           state;
-   MHCmd_t              mhcmd;
-   MHRWCmd              rwcmd;
-   uint8_t              pd_rxlen;
-   uint8_t              pd_txlen;
-   uint8_t              od_len;
-   uint8_t              cks;
-   uint8_t              retry;
-   dl_interleave_t      interleave;
+   dl_mh_st_t state;
+   MHCmd_t mhcmd;
+   MHRWCmd rwcmd;
+   uint8_t pd_rxlen;
+   uint8_t pd_txlen;
+   uint8_t od_len;
+   uint8_t cks;
+   uint8_t retry;
+   dl_interleave_t interleave;
 } message_h_t;
 
 typedef struct
 {
-   dl_mdh_st_t          state;
-   iolink_dl_mode_t     dl_mode;
-   iolink_mhinfo_t      mhinfo;
+   dl_mdh_st_t state;
+   iolink_dl_mode_t dl_mode;
+   iolink_mhinfo_t mhinfo;
 } mode_h_t;
 
 typedef struct
 {
-   dl_cmdh_st_t         state;
-   CHCmd_t              chcmd;
+   dl_cmdh_st_t state;
+   CHCmd_t chcmd;
    iolink_controlcode_t control_code;
-   uint8_t              master_command;
+   uint8_t master_command;
 } command_h_t;
 
 typedef struct
 {
-   dl_isduh_st_t  state;
-   IHCmd_t        ihcmd;
-   uint8_t        total_isdu_len;
-   uint8_t        current_isdu_seg;
-   uint8_t        total_isdu_seg;
-   uint8_t        isdu_data[IOLINK_ISDU_MAX_SIZE];
-   uint32_t       isdu_timer;
-   bool           data_dir_read;
+   dl_isduh_st_t state;
+   IHCmd_t ihcmd;
+   uint8_t total_isdu_len;
+   uint8_t current_isdu_seg;
+   uint8_t total_isdu_seg;
+   uint8_t isdu_data[IOLINK_ISDU_MAX_SIZE];
+   uint32_t isdu_timer;
+   bool data_dir_read;
 } isdu_h_t;
 
 typedef struct
 {
-   uint8_t        event_qualifier;
-   uint8_t        event_code_msb;
-   uint8_t        event_code_lsb;
+   uint8_t event_qualifier;
+   uint8_t event_code_msb;
+   uint8_t event_code_lsb;
 } event_t;
 
 typedef struct
 {
-   dl_evh_st_t    state;
-   EHCmd_t        ehcmd;
-   bool           event_flag;
-   bool           event_confirmation;
-   uint8_t        ev_addr;
-   uint8_t        status_code;
-   uint8_t        num_entries;
-   uint8_t        ev_cnt;
-   uint8_t        ev_current;
-   event_t        events[IOLINK_MAX_EVENTS];
+   dl_evh_st_t state;
+   EHCmd_t ehcmd;
+   bool event_flag;
+   bool event_confirmation;
+   uint8_t ev_addr;
+   uint8_t status_code;
+   uint8_t num_entries;
+   uint8_t ev_cnt;
+   uint8_t ev_current;
+   event_t events[IOLINK_MAX_EVENTS];
 } event_h_t;
 
 typedef struct iolink_dl
 {
-   mode_h_t       mode_handler;
-   message_h_t    message_handler;
-   pd_handler_t   pd_handler;
-   od_handler_t   od_handler;
-   command_h_t    cmd_handler;
-   isdu_h_t       isdu_handler;
-   event_h_t      event_handler;
+   mode_h_t mode_handler;
+   message_h_t message_handler;
+   pd_handler_t pd_handler;
+   od_handler_t od_handler;
+   command_h_t cmd_handler;
+   isdu_h_t isdu_handler;
+   event_h_t event_handler;
 
    iolink_baudrate_t baudrate;
-   uint8_t        cycbyte;
+   uint8_t cycbyte;
    iolink_msequencetype_t mseq;
 
-   os_mutex_t     *mtx;
-   os_thread_t    *thread;
-   os_event_t     *event;
-   uint32_t       triggered_events;
-   os_timer_t     *timer;
-   dl_timer_t     timer_type;
-   bool           timer_elapsed;
-   os_timer_t     *timer_tcyc;
-   bool           timer_tcyc_elapsed;
+   os_mutex_t * mtx;
+   os_thread_t * thread;
+   os_event_t * event;
+   uint32_t triggered_events;
+   os_timer_t * timer;
+   dl_timer_t timer_type;
+   bool timer_elapsed;
+   os_timer_t * timer_tcyc;
+   bool timer_tcyc_elapsed;
 
-   bool           dataready;
-   bool           rxerror;
-   bool           rxtimeout;
+   bool dataready;
+   bool rxerror;
+   bool rxtimeout;
 
 #if IOLINK_HW == IOLINK_HW_MAX14819
-   bool           first_read_min_cycl;
-   uint8_t        devdly;
-   uint8_t        cqerr;
-   uint8_t        txbuffer[IOLINK_RXTX_BUFFER_SIZE];
-   uint8_t        rxbuffer[IOLINK_RXTX_BUFFER_SIZE];
-   uint8_t        tinitcyc;
+   bool first_read_min_cycl;
+   uint8_t devdly;
+   uint8_t cqerr;
+   uint8_t txbuffer[IOLINK_RXTX_BUFFER_SIZE];
+   uint8_t rxbuffer[IOLINK_RXTX_BUFFER_SIZE];
+   uint8_t tinitcyc;
 #endif
 } iolink_dl_t;
 
@@ -334,15 +333,30 @@ typedef struct iolink_dl
  */
 iolink_error_t DL_Read_req (iolink_port_t * port, uint8_t address);
 iolink_error_t DL_Write_req (iolink_port_t * port, uint8_t address, uint8_t value);
-iolink_error_t DL_SetMode_req (iolink_port_t * port, iolink_dl_mode_t mode, iolink_mode_vl_t *valuelist);
-iolink_error_t DL_Write_Devicemode_req (iolink_port_t * port, iolink_dl_mode_t devicemode);
+iolink_error_t DL_SetMode_req (
+   iolink_port_t * port,
+   iolink_dl_mode_t mode,
+   iolink_mode_vl_t * valuelist);
+iolink_error_t DL_Write_Devicemode_req (
+   iolink_port_t * port,
+   iolink_dl_mode_t devicemode);
 iolink_error_t DL_ReadParam_req (iolink_port_t * port, uint8_t address);
-iolink_error_t DL_WriteParam_req (iolink_port_t * port, uint8_t address, uint8_t value);
-iolink_error_t DL_ISDUTransport_req (iolink_port_t * port, iolink_isdu_vl_t *valuelist);
-iolink_error_t DL_Control_req (iolink_port_t * port, iolink_controlcode_t controlcode);
+iolink_error_t DL_WriteParam_req (
+   iolink_port_t * port,
+   uint8_t address,
+   uint8_t value);
+iolink_error_t DL_ISDUTransport_req (
+   iolink_port_t * port,
+   iolink_isdu_vl_t * valuelist);
+iolink_error_t DL_Control_req (
+   iolink_port_t * port,
+   iolink_controlcode_t controlcode);
 iolink_error_t DL_EventConf_req (iolink_port_t * port);
-iolink_error_t DL_PDOutputUpdate_req (iolink_port_t * port, uint8_t *outputdata);
-iolink_error_t DL_PDOutputGet_req (iolink_port_t * port, uint8_t * len, uint8_t * data);
+iolink_error_t DL_PDOutputUpdate_req (iolink_port_t * port, uint8_t * outputdata);
+iolink_error_t DL_PDOutputGet_req (
+   iolink_port_t * port,
+   uint8_t * len,
+   uint8_t * data);
 
 /*
  * Function interface
@@ -357,8 +371,11 @@ iolink_error_t DL_PDOutputGet_req (iolink_port_t * port, uint8_t * len, uint8_t 
  * @param thread_prio        Priority of the thread
  * @param thread_stack_size  Stack size of the thread
  */
-void iolink_dl_instantiate (iolink_port_t * port, const iolink_port_cfg_t * port_cfg,
-                            unsigned int thread_prio, size_t thread_stack_size);
+void iolink_dl_instantiate (
+   iolink_port_t * port,
+   const iolink_port_cfg_t * port_cfg,
+   unsigned int thread_prio,
+   size_t thread_stack_size);
 /**
  * This function resets the data link layer for one port to an initial state.
  *

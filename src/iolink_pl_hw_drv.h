@@ -22,35 +22,54 @@
 #include "iolink_max14819.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 struct iolink_hw_drv;
 
 typedef struct iolink_hw_ops
 {
-   iolink_baudrate_t (*get_baudrate) (struct iolink_hw_drv * iolink_hw,
-                                      void * arg);
+   iolink_baudrate_t (*get_baudrate) (struct iolink_hw_drv * iolink_hw, void * arg);
    uint8_t (*get_cycletime) (struct iolink_hw_drv * iolink_hw, void * arg);
-   void (*set_cycletime) (struct iolink_hw_drv * iolink_hw, void * arg,
-                          uint8_t cycbyte);
-   bool (*set_mode) (struct iolink_hw_drv * iolink_hw, void * arg,
-                     iolink_pl_mode_t mode);
+   void (*set_cycletime) (
+      struct iolink_hw_drv * iolink_hw,
+      void * arg,
+      uint8_t cycbyte);
+   bool (*set_mode) (
+      struct iolink_hw_drv * iolink_hw,
+      void * arg,
+      iolink_pl_mode_t mode);
    void (*enable_cycle_timer) (struct iolink_hw_drv * iolink_hw, void * arg);
    void (*disable_cycle_timer) (struct iolink_hw_drv * iolink_hw, void * arg);
-   void (*get_error) (struct iolink_hw_drv * iolink_hw, void * arg,
-                      uint8_t *cqerr, uint8_t *devdly);
-   void (*get_data) (struct iolink_hw_drv * iolink_hw, void * arg,
-                      uint8_t *rxdata, uint8_t len);
-   void (*dl_msg) (struct iolink_hw_drv * iolink_hw, void * arg,
-                   uint8_t rxbytes, uint8_t txbytes, uint8_t *data);
+   void (*get_error) (
+      struct iolink_hw_drv * iolink_hw,
+      void * arg,
+      uint8_t * cqerr,
+      uint8_t * devdly);
+   void (*get_data) (
+      struct iolink_hw_drv * iolink_hw,
+      void * arg,
+      uint8_t * rxdata,
+      uint8_t len);
+   void (*dl_msg) (
+      struct iolink_hw_drv * iolink_hw,
+      void * arg,
+      uint8_t rxbytes,
+      uint8_t txbytes,
+      uint8_t * data);
    void (*send_msg) (struct iolink_hw_drv * iolink_hw, void * arg);
-   void (*transfer_req) (struct iolink_hw_drv * iolink_hw, void * arg,
-                         uint8_t rxbytes, uint8_t txbytes, uint8_t *data);
+   void (*transfer_req) (
+      struct iolink_hw_drv * iolink_hw,
+      void * arg,
+      uint8_t rxbytes,
+      uint8_t txbytes,
+      uint8_t * data);
    bool (*init_sdci) (struct iolink_hw_drv * iolink_hw, void * arg);
-   void (*configure_event) (struct iolink_hw_drv * iolink_hw, void * arg,
-                            os_event_t * event, uint32_t flag);
+   void (*configure_event) (
+      struct iolink_hw_drv * iolink_hw,
+      void * arg,
+      os_event_t * event,
+      uint32_t flag);
    void (*pl_handler) (struct iolink_hw_drv * iolink_hw, void * arg);
 } iolink_hw_ops_t;
 

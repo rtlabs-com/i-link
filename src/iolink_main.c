@@ -10,19 +10,18 @@
  * See LICENSE file in the project root for full license information.
  ********************************************************************/
 
-
 #ifdef UNIT_TEST
 #define iolink_pl_init mock_iolink_pl_init
 #endif /* UNIT_TEST */
 
 #include "iolink_main.h"
-#include "iolink_al.h" /* iolink_al_init */
-#include "iolink_cm.h" /* iolink_cm_init */
-#include "iolink_ds.h" /* iolink_ds_init ds_SMI_ParServToDS_req */
+#include "iolink_al.h"  /* iolink_al_init */
+#include "iolink_cm.h"  /* iolink_cm_init */
+#include "iolink_ds.h"  /* iolink_ds_init ds_SMI_ParServToDS_req */
 #include "iolink_ode.h" /* iolink_ode_init */
 #include "iolink_pde.h" /* iolink_pde_init */
-#include "iolink_pl.h" /* iolink_pl_init */
-#include "iolink_sm.h" /* iolink_sm_init */
+#include "iolink_pl.h"  /* iolink_pl_init */
+#include "iolink_sm.h"  /* iolink_sm_init */
 
 #include "osal.h"
 
@@ -34,7 +33,7 @@
  *
  */
 
-#define IOLINK_MASTER_JOB_CNT 40
+#define IOLINK_MASTER_JOB_CNT     40
 #define IOLINK_MASTER_JOB_API_CNT 10
 
 typedef struct iolink_port
@@ -56,22 +55,28 @@ typedef struct iolink_port
 typedef struct iolink_m
 {
    os_thread_t * thread;
-   os_mbox_t * mbox;            /* Mailbox for job submission */
-   os_mbox_t * mbox_avail;      /* Mailbox for available jobs */
-   os_mbox_t * mbox_api_avail;  /* Mailbox for available API (external) jobs */
+   os_mbox_t * mbox;           /* Mailbox for job submission */
+   os_mbox_t * mbox_avail;     /* Mailbox for available jobs */
+   os_mbox_t * mbox_api_avail; /* Mailbox for available API (external) jobs */
    iolink_job_t job[IOLINK_MASTER_JOB_CNT];
    iolink_job_t job_api[IOLINK_MASTER_JOB_API_CNT];
 
    void * cb_arg; /* Callback opaque argument */
 
    /* SMI cnf/ind callback */
-   void (*cb_smi) (void * arg, uint8_t portnumber,
-                   iolink_arg_block_id_t ref_arg_block_id,
-                   uint16_t arg_block_len, arg_block_t * arg_block);
+   void (*cb_smi) (
+      void * arg,
+      uint8_t portnumber,
+      iolink_arg_block_id_t ref_arg_block_id,
+      uint16_t arg_block_len,
+      arg_block_t * arg_block);
 
    /* Periodic data callback */
-   void (*cb_pd) (uint8_t portnumber, void * arg, uint8_t data_len,
-                  const uint8_t * data);
+   void (*cb_pd) (
+      uint8_t portnumber,
+      void * arg,
+      uint8_t data_len,
+      const uint8_t * data);
 
    uint8_t port_cnt;
    struct iolink_port ports[];
@@ -80,7 +85,7 @@ typedef struct iolink_m
 static iolink_m_t * the_master = NULL;
 
 static inline iolink_transmission_rate_t mhmode_to_transmission_rate (
-                                                         iolink_mhmode_t mhmode)
+   iolink_mhmode_t mhmode)
 {
    iolink_transmission_rate_t res = IOLINK_TRANSMISSION_RATE_NOT_DETECTED;
 
@@ -102,8 +107,9 @@ static inline iolink_transmission_rate_t mhmode_to_transmission_rate (
    return res;
 }
 
-static inline iolink_error_t portnumber_to_iolinkport (uint8_t portnumber,
-                                                       iolink_port_t ** port)
+static inline iolink_error_t portnumber_to_iolinkport (
+   uint8_t portnumber,
+   iolink_port_t ** port)
 {
    uint8_t port_index = portnumber - 1;
 
@@ -114,8 +120,7 @@ static inline iolink_error_t portnumber_to_iolinkport (uint8_t portnumber,
       return IOLINK_ERROR_STATE_INVALID;
    }
 
-   if ((portnumber == 0) ||
-       (port_index > the_master->port_cnt))
+   if ((portnumber == 0) || (port_index > the_master->port_cnt))
    {
       return IOLINK_ERROR_PARAMETER_CONFLICT;
    }
@@ -125,9 +130,10 @@ static inline iolink_error_t portnumber_to_iolinkport (uint8_t portnumber,
    return IOLINK_ERROR_NONE;
 }
 
-static inline iolink_error_t common_smi_check (uint8_t portnumber,
-                                               arg_block_t * arg_block,
-                                               iolink_port_t ** port)
+static inline iolink_error_t common_smi_check (
+   uint8_t portnumber,
+   arg_block_t * arg_block,
+   iolink_port_t ** port)
 {
    iolink_error_t error = portnumber_to_iolinkport (portnumber, port);
 
@@ -163,10 +169,13 @@ static void iolink_main (void * arg)
       case IOLINK_JOB_PD_EVENT:
          if (master->cb_pd)
          {
-            master->cb_pd (iolink_get_portnumber (job->port), master->cb_arg,
-                           job->pd_event.data_len, job->pd_event.data);
+            master->cb_pd (
+               iolink_get_portnumber (job->port),
+               master->cb_arg,
+               job->pd_event.data_len,
+               job->pd_event.data);
          }
-         job->type = IOLINK_JOB_NONE;
+         job->type     = IOLINK_JOB_NONE;
          job->callback = NULL;
          os_mbox_post (master->mbox_avail, job, 0);
          break;
@@ -202,7 +211,7 @@ static void iolink_main (void * arg)
          {
             job->callback (job);
          }
-         job->type = IOLINK_JOB_NONE;
+         job->type     = IOLINK_JOB_NONE;
          job->callback = NULL;
          os_mbox_post (master->mbox_avail, job, 0);
          break;
@@ -219,7 +228,7 @@ static void iolink_main (void * arg)
          {
             job->callback (job);
          }
-         job->type = IOLINK_JOB_NONE;
+         job->type     = IOLINK_JOB_NONE;
          job->callback = NULL;
          os_mbox_post (master->mbox_api_avail, job, 0);
          break;
@@ -240,8 +249,8 @@ iolink_job_t * iolink_fetch_avail_job (iolink_port_t * port)
 
 #ifdef __rtk__ // TODO make this generic
    /* Make sure internal API is not used from any other thread */
-   CC_ASSERT (task_self() == port->master->thread ||
-              task_self() == port->dl.thread);
+   CC_ASSERT (
+      task_self() == port->master->thread || task_self() == port->dl.thread);
 #endif /* __rtk__ */
 
    if (os_mbox_fetch (port->master->mbox_avail, (void **)&job, 0))
@@ -260,8 +269,8 @@ iolink_job_t * iolink_fetch_avail_api_job (iolink_port_t * port)
 
 #ifdef __rtk__ // TODO make this generic
    /* Make sure the external API is not used within the stack */
-   CC_ASSERT (task_self() != port->master->thread &&
-              task_self() != port->dl.thread);
+   CC_ASSERT (
+      task_self() != port->master->thread && task_self() != port->dl.thread);
 #endif /* __rtk__ */
 
    if (os_mbox_fetch (port->master->mbox_api_avail, (void **)&job, 0))
@@ -284,10 +293,13 @@ bool iolink_post_job (iolink_port_t * port, iolink_job_t * job)
    return res;
 }
 #else
-void iolink_post_job_with_type_and_callback(iolink_port_t * port, iolink_job_t * job,
-      iolink_job_type_t type, void (*callback)(struct iolink_job * job))
+void iolink_post_job_with_type_and_callback (
+   iolink_port_t * port,
+   iolink_job_t * job,
+   iolink_job_type_t type,
+   void (*callback) (struct iolink_job * job))
 {
-   job->type = type;
+   job->type     = type;
    job->callback = callback;
 
    bool res = os_mbox_post (port->master->mbox, job, 0);
@@ -295,17 +307,20 @@ void iolink_post_job_with_type_and_callback(iolink_port_t * port, iolink_job_t *
 }
 #endif
 
-bool iolink_post_job_pd_event (iolink_port_t * port, uint32_t timeout,
-                               uint8_t data_len, const uint8_t * data)
+bool iolink_post_job_pd_event (
+   iolink_port_t * port,
+   uint32_t timeout,
+   uint8_t data_len,
+   const uint8_t * data)
 {
    iolink_job_t * job;
 
    os_mbox_fetch (port->master->mbox_avail, (void **)&job, OS_WAIT_FOREVER);
 
-   job->port = port;
-   job->type = IOLINK_JOB_PD_EVENT;
+   job->port              = port;
+   job->type              = IOLINK_JOB_PD_EVENT;
    job->pd_event.data_len = data_len;
-   job->pd_event.data = data;
+   job->pd_event.data     = data;
 
    bool res = os_mbox_post (port->master->mbox, job, timeout);
    CC_ASSERT (!res); // TODO how to handle this!?!
@@ -313,48 +328,62 @@ bool iolink_post_job_pd_event (iolink_port_t * port, uint32_t timeout,
    return res;
 }
 
-void iolink_smi_cnf (iolink_port_t * port,
-                     iolink_arg_block_id_t ref_arg_block_id,
-                     uint16_t arg_block_len, arg_block_t * arg_block)
+void iolink_smi_cnf (
+   iolink_port_t * port,
+   iolink_arg_block_id_t ref_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
    if (port->master->cb_smi)
    {
-      port->master->cb_smi (port->master->cb_arg, iolink_get_portnumber (port),
-                            ref_arg_block_id, arg_block_len, arg_block);
+      port->master->cb_smi (
+         port->master->cb_arg,
+         iolink_get_portnumber (port),
+         ref_arg_block_id,
+         arg_block_len,
+         arg_block);
    }
 }
 
-void iolink_smi_voidblock_cnf (iolink_port_t * port,
-                               iolink_arg_block_id_t ref_arg_block_id)
+void iolink_smi_voidblock_cnf (
+   iolink_port_t * port,
+   iolink_arg_block_id_t ref_arg_block_id)
 {
    if (port->master->cb_smi)
    {
       arg_block_void_t arg_block_void;
 
-      memset (&arg_block_void, 0, sizeof(arg_block_void_t));
+      memset (&arg_block_void, 0, sizeof (arg_block_void_t));
       arg_block_void.arg_block_id = IOLINK_ARG_BLOCK_ID_VOID_BLOCK;
-      port->master->cb_smi (port->master->cb_arg, iolink_get_portnumber (port),
-                            ref_arg_block_id, sizeof(arg_block_void_t),
-                            (arg_block_t *)&arg_block_void);
+      port->master->cb_smi (
+         port->master->cb_arg,
+         iolink_get_portnumber (port),
+         ref_arg_block_id,
+         sizeof (arg_block_void_t),
+         (arg_block_t *)&arg_block_void);
    }
 }
 
-void iolink_smi_joberror_ind (iolink_port_t * port,
-                              iolink_arg_block_id_t exp_arg_block_id,
-                              iolink_arg_block_id_t ref_arg_block_id,
-                              iolink_smi_errortypes_t error)
+void iolink_smi_joberror_ind (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   iolink_arg_block_id_t ref_arg_block_id,
+   iolink_smi_errortypes_t error)
 {
    if (port->master->cb_smi)
    {
       arg_block_joberror_t arg_block_error;
 
-      memset (&arg_block_error, 0, sizeof(arg_block_joberror_t));
-      arg_block_error.arg_block_id = IOLINK_ARG_BLOCK_ID_JOB_ERROR;
+      memset (&arg_block_error, 0, sizeof (arg_block_joberror_t));
+      arg_block_error.arg_block_id     = IOLINK_ARG_BLOCK_ID_JOB_ERROR;
       arg_block_error.exp_arg_block_id = exp_arg_block_id;
-      arg_block_error.error = error;
-      port->master->cb_smi (port->master->cb_arg, iolink_get_portnumber (port),
-                            ref_arg_block_id, sizeof(arg_block_joberror_t),
-                            (arg_block_t *)&arg_block_error);
+      arg_block_error.error            = error;
+      port->master->cb_smi (
+         port->master->cb_arg,
+         iolink_get_portnumber (port),
+         ref_arg_block_id,
+         sizeof (arg_block_joberror_t),
+         (arg_block_t *)&arg_block_error);
    }
 }
 
@@ -362,8 +391,7 @@ iolink_port_t * iolink_get_port (iolink_m_t * master, uint8_t portnumber)
 {
    uint8_t port_index = portnumber - 1;
 
-   if ((portnumber == 0) ||
-       (port_index > master->port_cnt))
+   if ((portnumber == 0) || (port_index > master->port_cnt))
    {
       return NULL;
    }
@@ -452,16 +480,17 @@ iolink_m_t * iolink_m_init (const iolink_m_cfg_t * m_cfg)
       return NULL;
    }
 
-   iolink_m_t * master = calloc (1, sizeof(iolink_m_t) + sizeof(iolink_port_t) * m_cfg->port_cnt);
+   iolink_m_t * master =
+      calloc (1, sizeof (iolink_m_t) + sizeof (iolink_port_t) * m_cfg->port_cnt);
    if (master == NULL)
    {
       return NULL;
    }
 
    master->port_cnt = m_cfg->port_cnt;
-   master->cb_arg = m_cfg->cb_arg;
-   master->cb_smi = m_cfg->cb_smi;
-   master->cb_pd = m_cfg->cb_pd;
+   master->cb_arg   = m_cfg->cb_arg;
+   master->cb_smi   = m_cfg->cb_smi;
+   master->cb_pd    = m_cfg->cb_pd;
 
    for (i = 0; i < master->port_cnt; i++)
    {
@@ -470,7 +499,7 @@ iolink_m_t * iolink_m_init (const iolink_m_cfg_t * m_cfg)
 
       iolink_port_t * port = &(master->ports[i]);
 
-      port->master = master;
+      port->master     = master;
       port->portnumber = i + 1;
 
       iolink_pl_init (port, port_cfg->name);
@@ -482,8 +511,9 @@ iolink_m_t * iolink_m_init (const iolink_m_cfg_t * m_cfg)
       iolink_pde_init (port);
    }
 
-   master->mbox = os_mbox_create (IOLINK_MASTER_JOB_CNT + IOLINK_MASTER_JOB_API_CNT);
-   master->mbox_avail = os_mbox_create (IOLINK_MASTER_JOB_CNT);
+   master->mbox =
+      os_mbox_create (IOLINK_MASTER_JOB_CNT + IOLINK_MASTER_JOB_API_CNT);
+   master->mbox_avail     = os_mbox_create (IOLINK_MASTER_JOB_CNT);
    master->mbox_api_avail = os_mbox_create (IOLINK_MASTER_JOB_API_CNT);
 
    for (i = 0; i < IOLINK_MASTER_JOB_CNT; i++)
@@ -498,8 +528,12 @@ iolink_m_t * iolink_m_init (const iolink_m_cfg_t * m_cfg)
       os_mbox_post (master->mbox_api_avail, &master->job_api[i], 0);
    }
 
-   master->thread = os_thread_create ("iolink_m_thread", m_cfg->master_thread_prio,
-                                      m_cfg->master_thread_stack_size, iolink_main, master);
+   master->thread = os_thread_create (
+      "iolink_m_thread",
+      m_cfg->master_thread_prio,
+      m_cfg->master_thread_stack_size,
+      iolink_main,
+      master);
    CC_ASSERT (master->thread != NULL);
 
    the_master = master;
@@ -543,13 +577,16 @@ void iolink_m_deinit (iolink_m_t ** m)
    *m = NULL;
 }
 
-static iolink_error_t SMI_common_req (uint8_t portnumber,
-                                      iolink_arg_block_id_t exp_arg_block_id,
-                                      uint16_t arg_block_len, arg_block_t * arg_block,
-                                      iolink_error_t (*SMI_req_fn) (iolink_port_t * port,
-                                            iolink_arg_block_id_t exp_arg_block_id,
-                                            uint16_t arg_block_len,
-                                            arg_block_t * arg_block_t))
+static iolink_error_t SMI_common_req (
+   uint8_t portnumber,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block,
+   iolink_error_t (*SMI_req_fn) (
+      iolink_port_t * port,
+      iolink_arg_block_id_t exp_arg_block_id,
+      uint16_t arg_block_len,
+      arg_block_t * arg_block_t))
 {
    iolink_port_t * port = NULL;
 
@@ -563,49 +600,81 @@ static iolink_error_t SMI_common_req (uint8_t portnumber,
    return SMI_req_fn (port, exp_arg_block_id, arg_block_len, arg_block);
 }
 
-iolink_error_t SMI_MasterIdentification_req (uint8_t portnumber,
-                                             iolink_arg_block_id_t exp_arg_block_id,
-                                             uint16_t arg_block_len, arg_block_t * arg_block)
+iolink_error_t SMI_MasterIdentification_req (
+   uint8_t portnumber,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
-   return SMI_common_req(portnumber, exp_arg_block_id, arg_block_len, arg_block,
-                         cm_SMI_MasterIdentification_req);
+   return SMI_common_req (
+      portnumber,
+      exp_arg_block_id,
+      arg_block_len,
+      arg_block,
+      cm_SMI_MasterIdentification_req);
 }
 
-iolink_error_t SMI_PortConfiguration_req (uint8_t portnumber,
-                                          iolink_arg_block_id_t exp_arg_block_id,
-                                          uint16_t arg_block_len, arg_block_t * arg_block)
+iolink_error_t SMI_PortConfiguration_req (
+   uint8_t portnumber,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
-   return SMI_common_req(portnumber, exp_arg_block_id, arg_block_len, arg_block,
-                         cm_SMI_PortConfiguration_req);
+   return SMI_common_req (
+      portnumber,
+      exp_arg_block_id,
+      arg_block_len,
+      arg_block,
+      cm_SMI_PortConfiguration_req);
 }
 
-iolink_error_t SMI_ReadbackPortConfiguration_req (uint8_t portnumber,
-                                                  iolink_arg_block_id_t exp_arg_block_id,
-                                                  uint16_t arg_block_len, arg_block_t * arg_block)
+iolink_error_t SMI_ReadbackPortConfiguration_req (
+   uint8_t portnumber,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
-   return SMI_common_req(portnumber, exp_arg_block_id, arg_block_len, arg_block,
-                         cm_SMI_ReadbackPortConfiguration_req);
+   return SMI_common_req (
+      portnumber,
+      exp_arg_block_id,
+      arg_block_len,
+      arg_block,
+      cm_SMI_ReadbackPortConfiguration_req);
 }
 
-iolink_error_t SMI_PortStatus_req (uint8_t portnumber,
-                                   iolink_arg_block_id_t exp_arg_block_id,
-                                   uint16_t arg_block_len, arg_block_t * arg_block)
+iolink_error_t SMI_PortStatus_req (
+   uint8_t portnumber,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
-   return SMI_common_req(portnumber, exp_arg_block_id, arg_block_len, arg_block,
-                         cm_SMI_PortStatus_req);
+   return SMI_common_req (
+      portnumber,
+      exp_arg_block_id,
+      arg_block_len,
+      arg_block,
+      cm_SMI_PortStatus_req);
 }
 
-iolink_error_t SMI_DeviceRead_req (uint8_t portnumber,
-                                   iolink_arg_block_id_t exp_arg_block_id,
-                                   uint16_t arg_block_len, arg_block_t * arg_block)
+iolink_error_t SMI_DeviceRead_req (
+   uint8_t portnumber,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
-   return SMI_common_req(portnumber, exp_arg_block_id, arg_block_len, arg_block,
-                         ode_SMI_DeviceRead_req);
+   return SMI_common_req (
+      portnumber,
+      exp_arg_block_id,
+      arg_block_len,
+      arg_block,
+      ode_SMI_DeviceRead_req);
 }
 
-iolink_error_t SMI_DeviceWrite_req (uint8_t portnumber,
-                                    iolink_arg_block_id_t exp_arg_block_id,
-                                    uint16_t arg_block_len, arg_block_t * arg_block)
+iolink_error_t SMI_DeviceWrite_req (
+   uint8_t portnumber,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
    iolink_port_t * port = NULL;
 
@@ -617,7 +686,7 @@ iolink_error_t SMI_DeviceWrite_req (uint8_t portnumber,
    }
 
    // special check needed to pass test case 289
-   if ((arg_block->od.index == 24) && ((arg_block_len - sizeof(arg_block_od_t)) == 10))
+   if ((arg_block->od.index == 24) && ((arg_block_len - sizeof (arg_block_od_t)) == 10))
    {
       return IOLINK_ERROR_ODLENGTH;
    }
@@ -625,51 +694,86 @@ iolink_error_t SMI_DeviceWrite_req (uint8_t portnumber,
    return ode_SMI_DeviceWrite_req (port, exp_arg_block_id, arg_block_len, arg_block);
 }
 
-
-iolink_error_t SMI_ParamReadBatch_req (uint8_t portnumber,
-                                       iolink_arg_block_id_t exp_arg_block_id,
-                                       uint16_t arg_block_len, arg_block_t * arg_block)
+iolink_error_t SMI_ParamReadBatch_req (
+   uint8_t portnumber,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
-   return SMI_common_req(portnumber, exp_arg_block_id, arg_block_len, arg_block,
-                         ode_SMI_ParamReadBatch_req);
+   return SMI_common_req (
+      portnumber,
+      exp_arg_block_id,
+      arg_block_len,
+      arg_block,
+      ode_SMI_ParamReadBatch_req);
 }
 
-iolink_error_t SMI_ParamWriteBatch_req (uint8_t portnumber,
-                                        iolink_arg_block_id_t exp_arg_block_id,
-                                        uint16_t arg_block_len, arg_block_t * arg_block)
+iolink_error_t SMI_ParamWriteBatch_req (
+   uint8_t portnumber,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
-   return SMI_common_req(portnumber, exp_arg_block_id, arg_block_len, arg_block,
-                         ode_SMI_ParamWriteBatch_req);
+   return SMI_common_req (
+      portnumber,
+      exp_arg_block_id,
+      arg_block_len,
+      arg_block,
+      ode_SMI_ParamWriteBatch_req);
 }
 
-iolink_error_t SMI_PDIn_req (uint8_t portnumber,
-                             iolink_arg_block_id_t exp_arg_block_id,
-                             uint16_t arg_block_len, arg_block_t * arg_block)
+iolink_error_t SMI_PDIn_req (
+   uint8_t portnumber,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
-   return SMI_common_req(portnumber, exp_arg_block_id, arg_block_len, arg_block,
-                         pde_SMI_PDIn_req);
+   return SMI_common_req (
+      portnumber,
+      exp_arg_block_id,
+      arg_block_len,
+      arg_block,
+      pde_SMI_PDIn_req);
 }
 
-iolink_error_t SMI_PDOut_req (uint8_t portnumber,
-                              iolink_arg_block_id_t exp_arg_block_id,
-                              uint16_t arg_block_len, arg_block_t * arg_block)
+iolink_error_t SMI_PDOut_req (
+   uint8_t portnumber,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
-   return SMI_common_req(portnumber, exp_arg_block_id, arg_block_len, arg_block,
-                         pde_SMI_PDOut_req);
+   return SMI_common_req (
+      portnumber,
+      exp_arg_block_id,
+      arg_block_len,
+      arg_block,
+      pde_SMI_PDOut_req);
 }
 
-iolink_error_t SMI_PDInOut_req (uint8_t portnumber,
-                                iolink_arg_block_id_t exp_arg_block_id,
-                                uint16_t arg_block_len, arg_block_t * arg_block)
+iolink_error_t SMI_PDInOut_req (
+   uint8_t portnumber,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
-   return SMI_common_req(portnumber, exp_arg_block_id, arg_block_len, arg_block,
-                         pde_SMI_PDInOut_req);
+   return SMI_common_req (
+      portnumber,
+      exp_arg_block_id,
+      arg_block_len,
+      arg_block,
+      pde_SMI_PDInOut_req);
 }
 
-iolink_error_t SMI_ParServToDS_req (uint8_t portnumber,
-                                    iolink_arg_block_id_t exp_arg_block_id,
-                                    uint16_t arg_block_len, arg_block_t * arg_block)
+iolink_error_t SMI_ParServToDS_req (
+   uint8_t portnumber,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
-   return SMI_common_req(portnumber, exp_arg_block_id, arg_block_len, arg_block,
-                         ds_SMI_ParServToDS_req);
+   return SMI_common_req (
+      portnumber,
+      exp_arg_block_id,
+      arg_block_len,
+      arg_block,
+      ds_SMI_ParServToDS_req);
 }

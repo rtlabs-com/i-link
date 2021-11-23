@@ -10,7 +10,6 @@
  * See LICENSE file in the project root for full license information.
  ********************************************************************/
 
-
 #ifndef IOLINK_AL_H
 #define IOLINK_AL_H
 
@@ -21,8 +20,7 @@
 #include "osal.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 typedef enum iolink_al_od_state
@@ -64,11 +62,14 @@ typedef struct iolink_al_port
       iolink_job_t * job_req;
       union
       {
-         void (*al_read_cnf_cb)(iolink_port_t * port, uint8_t len,
-                                const uint8_t * data,
-                                iolink_smi_errortypes_t errortype);
-         void (*al_write_cnf_cb)(iolink_port_t * port,
-                                 iolink_smi_errortypes_t errortype);
+         void (*al_read_cnf_cb) (
+            iolink_port_t * port,
+            uint8_t len,
+            const uint8_t * data,
+            iolink_smi_errortypes_t errortype);
+         void (*al_write_cnf_cb) (
+            iolink_port_t * port,
+            iolink_smi_errortypes_t errortype);
       };
    } service;
 
@@ -118,45 +119,69 @@ typedef enum iolink_fsm_al_event_event
    AL_EVENT_EVENT_LAST
 } iolink_fsm_al_event_event_t;
 
-iolink_error_t AL_Read_req (iolink_port_t * port, uint16_t index,
-                    uint8_t subindex,
-                    void (*al_read_cnf_cb)(iolink_port_t * port,
-                                           uint8_t len, const uint8_t * data,
-                                           iolink_smi_errortypes_t errortype));
-iolink_error_t AL_Write_req (iolink_port_t * port, uint16_t index,
-                    uint8_t subindex, uint8_t len,
-                    const uint8_t * data,
-                    void (*al_write_cnf_cb)(iolink_port_t * port,
-                                            iolink_smi_errortypes_t errortype));
+iolink_error_t AL_Read_req (
+   iolink_port_t * port,
+   uint16_t index,
+   uint8_t subindex,
+   void (*al_read_cnf_cb) (
+      iolink_port_t * port,
+      uint8_t len,
+      const uint8_t * data,
+      iolink_smi_errortypes_t errortype));
+iolink_error_t AL_Write_req (
+   iolink_port_t * port,
+   uint16_t index,
+   uint8_t subindex,
+   uint8_t len,
+   const uint8_t * data,
+   void (*al_write_cnf_cb) (
+      iolink_port_t * port,
+      iolink_smi_errortypes_t errortype));
 iolink_error_t AL_SetOutput_req (iolink_port_t * port, uint8_t * data);
-iolink_error_t AL_Control_req (iolink_port_t * port,
-                               iolink_controlcode_t controlcode);
-iolink_error_t AL_GetInput_req (iolink_port_t * port, uint8_t * len,
-                                uint8_t * data);
-iolink_error_t AL_GetInputOutput_req (iolink_port_t * port, uint8_t * len,
-                                      uint8_t * data);
-void DL_Event_ind (iolink_port_t * port, uint16_t eventcode,
-                   uint8_t event_qualifier, uint8_t eventsleft);
+iolink_error_t AL_Control_req (
+   iolink_port_t * port,
+   iolink_controlcode_t controlcode);
+iolink_error_t AL_GetInput_req (iolink_port_t * port, uint8_t * len, uint8_t * data);
+iolink_error_t AL_GetInputOutput_req (
+   iolink_port_t * port,
+   uint8_t * len,
+   uint8_t * data);
+void DL_Event_ind (
+   iolink_port_t * port,
+   uint16_t eventcode,
+   uint8_t event_qualifier,
+   uint8_t eventsleft);
 void DL_Control_ind (iolink_port_t * port, iolink_controlcode_t controlcode);
-void DL_ReadParam_cnf (iolink_port_t * port, uint8_t value,
-                       iolink_status_t errinfo);
+void DL_ReadParam_cnf (iolink_port_t * port, uint8_t value, iolink_status_t errinfo);
 void DL_WriteParam_cnf (iolink_port_t * port, iolink_status_t errinfo);
-void DL_ISDUTransport_cnf (iolink_port_t * port, uint8_t *data, uint8_t length,
-                           iservice_t qualifier, iolink_status_t errinfo);
-void DL_PDInputTransport_ind (iolink_port_t * port, uint8_t *inputdata,
-                              uint8_t length);
-void AL_Event_ind (iolink_port_t * port, uint8_t event_cnt,
-                   diag_entry_t events[6]); // TODO where to put this?
+void DL_ISDUTransport_cnf (
+   iolink_port_t * port,
+   uint8_t * data,
+   uint8_t length,
+   iservice_t qualifier,
+   iolink_status_t errinfo);
+void DL_PDInputTransport_ind (
+   iolink_port_t * port,
+   uint8_t * inputdata,
+   uint8_t length);
+void AL_Event_ind (
+   iolink_port_t * port,
+   uint8_t event_cnt,
+   diag_entry_t events[6]); // TODO where to put this?
 iolink_error_t AL_Abort (iolink_port_t * port);
 iolink_error_t AL_Event_rsp (iolink_port_t * port);
 
 void iolink_al_init (iolink_port_t * port);
 
 #ifdef UNIT_TEST
-// TODO: A more logical location for this function is in iolink_main, but for some
+// TODO: A more logical location for this function is in iolink_main, but for
+// some
 //       unknown reason will some unit tests fail when placing it there??
-void iolink_post_job_with_type_and_callback(iolink_port_t * port, iolink_job_t * job,
-      iolink_job_type_t type, void (*callback)(struct iolink_job * job));
+void iolink_post_job_with_type_and_callback (
+   iolink_port_t * port,
+   iolink_job_t * job,
+   iolink_job_type_t type,
+   void (*callback) (struct iolink_job * job));
 #endif
 
 #ifdef __cplusplus
@@ -164,4 +189,3 @@ void iolink_post_job_with_type_and_callback(iolink_port_t * port, iolink_job_t *
 #endif
 
 #endif /* IOLINK_AL_H */
-

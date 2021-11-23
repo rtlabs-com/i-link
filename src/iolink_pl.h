@@ -10,7 +10,6 @@
  * See LICENSE file in the project root for full license information.
  ********************************************************************/
 
-
 #ifndef IOLINK_PL_H
 #define IOLINK_PL_H
 
@@ -22,8 +21,7 @@
 #include <iolink_types.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 typedef struct iolink_pl_port
@@ -34,15 +32,16 @@ typedef struct iolink_pl_port
 /*
  * Function interface
  */
-void iolink_configure_pl_event (iolink_port_t * port, os_event_t * event,
-                                uint32_t flag);
+void iolink_configure_pl_event (
+   iolink_port_t * port,
+   os_event_t * event,
+   uint32_t flag);
 void iolink_pl_handler (iolink_port_t * port);
 iolink_baudrate_t iolink_pl_get_baudrate (iolink_port_t * port);
 uint8_t iolink_pl_get_cycletime (iolink_port_t * port);
 void iolink_pl_set_cycletime (iolink_port_t * port, uint8_t cycbyte);
 void iolink_pl_get_data (iolink_port_t * port, uint8_t * rxdata, uint8_t len);
-void iolink_pl_get_error (iolink_port_t * port, uint8_t * cqerr,
-                          uint8_t * devdly);
+void iolink_pl_get_error (iolink_port_t * port, uint8_t * cqerr, uint8_t * devdly);
 bool iolink_pl_init_sdci (iolink_port_t * port);
 
 /*
@@ -52,10 +51,16 @@ void PL_SetMode_req (iolink_port_t * port, iolink_pl_mode_t mode);
 void PL_WakeUp_req (iolink_port_t * port);
 #if IOLINK_HW == IOLINK_HW_MAX14819
 void PL_Resend (iolink_port_t * port);
-void PL_Transfer_req (iolink_port_t * port, uint8_t rxbytes, uint8_t txbytes,
-                      uint8_t * data);
-void PL_MessageDownload_req (iolink_port_t * port, uint8_t rxbytes,
-                             uint8_t txbytes, uint8_t * data);
+void PL_Transfer_req (
+   iolink_port_t * port,
+   uint8_t rxbytes,
+   uint8_t txbytes,
+   uint8_t * data);
+void PL_MessageDownload_req (
+   iolink_port_t * port,
+   uint8_t rxbytes,
+   uint8_t txbytes,
+   uint8_t * data);
 void PL_EnableCycleTimer (iolink_port_t * port);
 void PL_DisableCycleTimer (iolink_port_t * port);
 #else
@@ -68,4 +73,3 @@ void iolink_pl_init (iolink_port_t * port, const char * name);
 #endif
 
 #endif /* IOLINK_PL_H */
-

@@ -10,13 +10,11 @@
  * See LICENSE file in the project root for full license information.
  ********************************************************************/
 
-
 #ifndef IOLINK_MAIN_H
 #define IOLINK_MAIN_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #include "iolink_types.h"
@@ -113,7 +111,7 @@ typedef struct iolink_job
 {
    iolink_job_type_t type;
    iolink_port_t * port;
-   void (*callback)(struct iolink_job * job);
+   void (*callback) (struct iolink_job * job);
    union
    {
       iolink_mhmode_t dl_mode;
@@ -148,10 +146,11 @@ typedef struct iolink_job
          uint16_t index;
          uint8_t subindex;
          uint8_t val;
-         void (*al_read_cb)(iolink_port_t * port,
-                            uint8_t len,
-                            const uint8_t * data,
-                            iolink_smi_errortypes_t errortype);
+         void (*al_read_cb) (
+            iolink_port_t * port,
+            uint8_t len,
+            const uint8_t * data,
+            iolink_smi_errortypes_t errortype);
       } al_read_req;
       struct
       {
@@ -159,8 +158,9 @@ typedef struct iolink_job
          uint8_t subindex;
          uint8_t length;
          const uint8_t * data;
-         void (*al_write_cb)(iolink_port_t * port,
-                             iolink_smi_errortypes_t errortype);
+         void (*al_write_cb) (
+            iolink_port_t * port,
+            iolink_smi_errortypes_t errortype);
       } al_write_req;
       struct
       {
@@ -225,21 +225,31 @@ iolink_job_t * iolink_fetch_avail_api_job (iolink_port_t * port);
 #ifdef UNIT_TEST
 bool iolink_post_job (iolink_port_t * port, iolink_job_t * job);
 #else
-void iolink_post_job_with_type_and_callback(iolink_port_t * port, iolink_job_t * job,
-      iolink_job_type_t type, void (*callback)(struct iolink_job * job));
+void iolink_post_job_with_type_and_callback (
+   iolink_port_t * port,
+   iolink_job_t * job,
+   iolink_job_type_t type,
+   void (*callback) (struct iolink_job * job));
 #endif
-bool iolink_post_job_pd_event (iolink_port_t * port, uint32_t timeout,
-                               uint8_t data_len, const uint8_t * data);
+bool iolink_post_job_pd_event (
+   iolink_port_t * port,
+   uint32_t timeout,
+   uint8_t data_len,
+   const uint8_t * data);
 
-void iolink_smi_cnf (iolink_port_t * port,
-                     iolink_arg_block_id_t ref_arg_block_id,
-                     uint16_t arg_block_len, arg_block_t * arg_block);
-void iolink_smi_voidblock_cnf (iolink_port_t * port,
-                               iolink_arg_block_id_t ref_arg_block_id);
-void iolink_smi_joberror_ind (iolink_port_t * port,
-                              iolink_arg_block_id_t exp_arg_block_id,
-                              iolink_arg_block_id_t ref_arg_block_id,
-                              iolink_smi_errortypes_t error);
+void iolink_smi_cnf (
+   iolink_port_t * port,
+   iolink_arg_block_id_t ref_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
+void iolink_smi_voidblock_cnf (
+   iolink_port_t * port,
+   iolink_arg_block_id_t ref_arg_block_id);
+void iolink_smi_joberror_ind (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   iolink_arg_block_id_t ref_arg_block_id,
+   iolink_smi_errortypes_t error);
 
 /**
  * Get port information

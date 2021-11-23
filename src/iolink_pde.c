@@ -11,12 +11,12 @@
  ********************************************************************/
 
 #ifdef UNIT_TEST
-#define AL_Control_req mock_AL_Control_req
-#define AL_GetInput_req mock_AL_GetInput_req
-#define AL_GetInputOutput_req mock_AL_GetInputOutput_req
-#define AL_SetOutput_req mock_AL_SetOutput_req
-#define iolink_post_job mock_iolink_post_job
-#define iolink_fetch_avail_job mock_iolink_fetch_avail_job
+#define AL_Control_req             mock_AL_Control_req
+#define AL_GetInput_req            mock_AL_GetInput_req
+#define AL_GetInputOutput_req      mock_AL_GetInputOutput_req
+#define AL_SetOutput_req           mock_AL_SetOutput_req
+#define iolink_post_job            mock_iolink_post_job
+#define iolink_fetch_avail_job     mock_iolink_fetch_avail_job
 #define iolink_fetch_avail_api_job mock_iolink_fetch_avail_api_job
 #endif /* UNIT_TEST */
 
@@ -34,40 +34,42 @@
  *
  */
 
-static inline iolink_port_qualifier_info_t pde_port_quality_to_qualifier (iolink_port_t * port)
+static inline iolink_port_qualifier_info_t pde_port_quality_to_qualifier (
+   iolink_port_t * port)
 {
    iolink_port_info_t * port_info = iolink_get_port_info (port);
 
-   return (port_info->port_quality_info & IOLINK_PORT_QUALITY_INFO_INVALID) ?
-               IOLINK_PORT_QUALIFIER_INFO_PQ_INVALID :
-               IOLINK_PORT_QUALIFIER_INFO_PQ_VALID;
+   return (port_info->port_quality_info & IOLINK_PORT_QUALITY_INFO_INVALID)
+             ? IOLINK_PORT_QUALIFIER_INFO_PQ_INVALID
+             : IOLINK_PORT_QUALIFIER_INFO_PQ_VALID;
 }
 
-static inline iolink_port_status_info_t pde_get_port_status_info (iolink_port_t * port)
+static inline iolink_port_status_info_t pde_get_port_status_info (
+   iolink_port_t * port)
 {
    iolink_port_info_t * port_info = iolink_get_port_info (port);
 
    return port_info->port_status_info;
 }
 
-static iolink_error_t pde_check_smi_req (iolink_port_t * port,
-                                    iolink_arg_block_id_t exp_arg_block_id,
-                                    iolink_arg_block_id_t ref_arg_block_id,
-                                    uint8_t arg_block_len,
-                                    iolink_arg_block_id_t exp_exp_arg_block_id,
-                                    iolink_arg_block_id_t exp_ref_arg_block_id,
-                                    uint8_t exp_arg_block_len_min,
-                                    uint8_t exp_arg_block_len_max)
+static iolink_error_t pde_check_smi_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   iolink_arg_block_id_t ref_arg_block_id,
+   uint8_t arg_block_len,
+   iolink_arg_block_id_t exp_exp_arg_block_id,
+   iolink_arg_block_id_t exp_ref_arg_block_id,
+   uint8_t exp_arg_block_len_min,
+   uint8_t exp_arg_block_len_max)
 {
    iolink_smi_errortypes_t smi_error = IOLINK_SMI_ERRORTYPE_NONE;
-   iolink_error_t error = IOLINK_ERROR_NONE;
+   iolink_error_t error              = IOLINK_ERROR_NONE;
 
    if (exp_ref_arg_block_id != ref_arg_block_id)
    {
       smi_error = IOLINK_SMI_ERRORTYPE_ARGBLOCK_NOT_SUPPORTED;
    }
-   else if ((arg_block_len < exp_arg_block_len_min) ||
-            (arg_block_len > exp_arg_block_len_max))
+   else if ((arg_block_len < exp_arg_block_len_min) || (arg_block_len > exp_arg_block_len_max))
    {
       smi_error = IOLINK_SMI_ERRORTYPE_ARGBLOCK_LENGTH_INVALID;
    }
@@ -86,8 +88,13 @@ static iolink_error_t pde_check_smi_req (iolink_port_t * port,
       iolink_pde_port_t * pde = iolink_get_pde_ctx (port);
       if (pde->state == PD_STATE_Inactive)
       {
-         smi_error = IOLINK_SMI_ERRORTYPE_DEV_NOT_IN_OPERATE; // TODO is this correct?
-         iolink_smi_joberror_ind (port, exp_arg_block_id, ref_arg_block_id, smi_error);
+         smi_error = IOLINK_SMI_ERRORTYPE_DEV_NOT_IN_OPERATE; // TODO is this
+                                                              // correct?
+         iolink_smi_joberror_ind (
+            port,
+            exp_arg_block_id,
+            ref_arg_block_id,
+            smi_error);
          error = IOLINK_ERROR_STATE_INVALID; // TODO what to return?
       }
    }
@@ -101,7 +108,7 @@ void iolink_pde_init (iolink_port_t * port)
    iolink_pde_port_t * pde = iolink_get_pde_ctx (port);
 
    pde->output_enable = false;
-   pde->state = PD_STATE_Inactive;
+   pde->state         = PD_STATE_Inactive;
 }
 
 iolink_error_t PD_Start (iolink_port_t * port)
@@ -125,60 +132,65 @@ iolink_error_t AL_NewInput_ind (iolink_port_t * port)
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t AL_Control_ind (iolink_port_t * port,
-                               iolink_controlcode_t controlcode)
+iolink_error_t AL_Control_ind (iolink_port_t * port, iolink_controlcode_t controlcode)
 {
    iolink_port_info_t * port_info = iolink_get_port_info (port);
 
    switch (controlcode)
    {
-      case IOLINK_CONTROLCODE_VALID:
-         port_info->port_quality_info &= ~IOLINK_PORT_QUALITY_INFO_INVALID;
-         break;
-      case IOLINK_CONTROLCODE_INVALID:
-         port_info->port_quality_info |= IOLINK_PORT_QUALITY_INFO_INVALID;
-         break;
-      case IOLINK_CONTROLCODE_PDOUTVALID:
-         port_info->port_quality_info &= ~IOLINK_PORT_QUALITY_INFO_PDO_INVALID;
-         break;
-      case IOLINK_CONTROLCODE_PDOUTINVALID:
-         port_info->port_quality_info |= IOLINK_PORT_QUALITY_INFO_PDO_INVALID;
-         break;
-      default:
-         CC_ASSERT (0);
-         break;
+   case IOLINK_CONTROLCODE_VALID:
+      port_info->port_quality_info &= ~IOLINK_PORT_QUALITY_INFO_INVALID;
+      break;
+   case IOLINK_CONTROLCODE_INVALID:
+      port_info->port_quality_info |= IOLINK_PORT_QUALITY_INFO_INVALID;
+      break;
+   case IOLINK_CONTROLCODE_PDOUTVALID:
+      port_info->port_quality_info &= ~IOLINK_PORT_QUALITY_INFO_PDO_INVALID;
+      break;
+   case IOLINK_CONTROLCODE_PDOUTINVALID:
+      port_info->port_quality_info |= IOLINK_PORT_QUALITY_INFO_PDO_INVALID;
+      break;
+   default:
+      CC_ASSERT (0);
+      break;
    }
 
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t pde_SMI_PDIn_req (iolink_port_t * port,
-                             iolink_arg_block_id_t exp_arg_block_id,
-                             uint16_t arg_block_len,
-                             arg_block_t * arg_block)
+iolink_error_t pde_SMI_PDIn_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
    iolink_arg_block_id_t ref_arg_block_id = arg_block->void_block.arg_block_id;
    arg_block_pdin_t arg_block_pdin;
-   memset (&arg_block_pdin, 0, sizeof(arg_block_pdin_t));
-   uint8_t pdin_len = 1;
-   iolink_error_t error = pde_check_smi_req (port, exp_arg_block_id,
-                                             ref_arg_block_id, arg_block_len,
-                                             IOLINK_ARG_BLOCK_ID_PD_IN,
-                                             IOLINK_ARG_BLOCK_ID_VOID_BLOCK,
-                                             sizeof(arg_block_void_t),
-                                             sizeof(arg_block_void_t));
+   memset (&arg_block_pdin, 0, sizeof (arg_block_pdin_t));
+   uint8_t pdin_len     = 1;
+   iolink_error_t error = pde_check_smi_req (
+      port,
+      exp_arg_block_id,
+      ref_arg_block_id,
+      arg_block_len,
+      IOLINK_ARG_BLOCK_ID_PD_IN,
+      IOLINK_ARG_BLOCK_ID_VOID_BLOCK,
+      sizeof (arg_block_void_t),
+      sizeof (arg_block_void_t));
 
    if (error != IOLINK_ERROR_NONE)
    {
-      iolink_port_status_info_t port_status_info = pde_get_port_status_info (port);
+      iolink_port_status_info_t port_status_info =
+         pde_get_port_status_info (port);
 
-      if ((error == IOLINK_ERROR_STATE_INVALID) &&
-          ((port_status_info == IOLINK_PORT_STATUS_INFO_DI) ||
-           (port_status_info == IOLINK_PORT_STATUS_INFO_DEACTIVATED)))
+      if (
+         (error == IOLINK_ERROR_STATE_INVALID) &&
+         ((port_status_info == IOLINK_PORT_STATUS_INFO_DI) ||
+          (port_status_info == IOLINK_PORT_STATUS_INFO_DEACTIVATED)))
       {
          // TODO Copy result from Get signal status DI_C/Q
          arg_block_pdin.data[0] = 1;
-         error = IOLINK_ERROR_NONE;
+         error                  = IOLINK_ERROR_NONE;
       }
    }
    else
@@ -188,34 +200,46 @@ iolink_error_t pde_SMI_PDIn_req (iolink_port_t * port,
 
       if (error != IOLINK_ERROR_NONE)
       {
-         iolink_smi_errortypes_t smi_error = IOLINK_SMI_ERRORTYPE_DEV_NOT_ACCESSIBLE;
-         iolink_smi_joberror_ind (port, exp_arg_block_id, ref_arg_block_id, smi_error);
+         iolink_smi_errortypes_t smi_error =
+            IOLINK_SMI_ERRORTYPE_DEV_NOT_ACCESSIBLE;
+         iolink_smi_joberror_ind (
+            port,
+            exp_arg_block_id,
+            ref_arg_block_id,
+            smi_error);
       }
    }
 
    if (error == IOLINK_ERROR_NONE)
    {
       arg_block_pdin.h.arg_block_id = exp_arg_block_id;
-      arg_block_pdin.h.len = pdin_len;
-      iolink_smi_cnf (port, ref_arg_block_id, sizeof(arg_block_pdin_head_t) + pdin_len,
-            (arg_block_t *)&arg_block_pdin);
+      arg_block_pdin.h.len          = pdin_len;
+      iolink_smi_cnf (
+         port,
+         ref_arg_block_id,
+         sizeof (arg_block_pdin_head_t) + pdin_len,
+         (arg_block_t *)&arg_block_pdin);
    }
 
    return error;
 }
 
-iolink_error_t pde_SMI_PDOut_req (iolink_port_t * port,
-                              iolink_arg_block_id_t exp_arg_block_id,
-                              uint16_t arg_block_len,
-                              arg_block_t * arg_block)
+iolink_error_t pde_SMI_PDOut_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
    iolink_arg_block_id_t ref_arg_block_id = arg_block->void_block.arg_block_id;
-   iolink_error_t error = pde_check_smi_req (port, exp_arg_block_id,
-                                             ref_arg_block_id, arg_block_len,
-                                             IOLINK_ARG_BLOCK_ID_VOID_BLOCK,
-                                             IOLINK_ARG_BLOCK_ID_PD_OUT,
-                                             sizeof(arg_block_pdout_head_t) + 1,
-                                             sizeof(arg_block_pdout_t));
+   iolink_error_t error                   = pde_check_smi_req (
+      port,
+      exp_arg_block_id,
+      ref_arg_block_id,
+      arg_block_len,
+      IOLINK_ARG_BLOCK_ID_VOID_BLOCK,
+      IOLINK_ARG_BLOCK_ID_PD_OUT,
+      sizeof (arg_block_pdout_head_t) + 1,
+      sizeof (arg_block_pdout_t));
 
    if (error == IOLINK_ERROR_NONE)
    {
@@ -226,24 +250,35 @@ iolink_error_t pde_SMI_PDOut_req (iolink_port_t * port,
       else
       {
          arg_block_pdout_t * arg_block_pdout = (arg_block_pdout_t *)arg_block;
-         bool output_enable = arg_block_pdout->h.oe & 1;
-         iolink_pde_port_t * pde = iolink_get_pde_ctx (port);
-         iolink_smi_errortypes_t smi_error = IOLINK_SMI_ERRORTYPE_DEV_NOT_ACCESSIBLE;
+         bool output_enable                  = arg_block_pdout->h.oe & 1;
+         iolink_pde_port_t * pde             = iolink_get_pde_ctx (port);
+         iolink_smi_errortypes_t smi_error =
+            IOLINK_SMI_ERRORTYPE_DEV_NOT_ACCESSIBLE;
 
          error = AL_SetOutput_req (port, arg_block_pdout->data);
 
          if (error != IOLINK_ERROR_NONE)
          {
-            iolink_smi_joberror_ind (port, exp_arg_block_id, ref_arg_block_id, smi_error);
+            iolink_smi_joberror_ind (
+               port,
+               exp_arg_block_id,
+               ref_arg_block_id,
+               smi_error);
          }
          else if (pde->output_enable != output_enable)
          {
-            error = AL_Control_req (port, (output_enable) ?
-                  IOLINK_CONTROLCODE_PDOUTVALID : IOLINK_CONTROLCODE_PDOUTINVALID);
+            error = AL_Control_req (
+               port,
+               (output_enable) ? IOLINK_CONTROLCODE_PDOUTVALID
+                               : IOLINK_CONTROLCODE_PDOUTINVALID);
 
             if (error != IOLINK_ERROR_NONE)
             {
-               iolink_smi_joberror_ind (port, exp_arg_block_id, ref_arg_block_id, smi_error);
+               iolink_smi_joberror_ind (
+                  port,
+                  exp_arg_block_id,
+                  ref_arg_block_id,
+                  smi_error);
             }
             else
             {
@@ -261,18 +296,22 @@ iolink_error_t pde_SMI_PDOut_req (iolink_port_t * port,
    return error;
 }
 
-iolink_error_t pde_SMI_PDInOut_req (iolink_port_t * port,
-                                iolink_arg_block_id_t exp_arg_block_id,
-                                uint16_t arg_block_len,
-                                arg_block_t * arg_block)
+iolink_error_t pde_SMI_PDInOut_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block)
 {
    iolink_arg_block_id_t ref_arg_block_id = arg_block->void_block.arg_block_id;
-   iolink_error_t error = pde_check_smi_req (port, exp_arg_block_id,
-                                             ref_arg_block_id, arg_block_len,
-                                             IOLINK_ARG_BLOCK_ID_PD_IN_OUT,
-                                             IOLINK_ARG_BLOCK_ID_VOID_BLOCK,
-                                             sizeof(arg_block_void_t),
-                                             sizeof(arg_block_void_t));
+   iolink_error_t error                   = pde_check_smi_req (
+      port,
+      exp_arg_block_id,
+      ref_arg_block_id,
+      arg_block_len,
+      IOLINK_ARG_BLOCK_ID_PD_IN_OUT,
+      IOLINK_ARG_BLOCK_ID_VOID_BLOCK,
+      sizeof (arg_block_void_t),
+      sizeof (arg_block_void_t));
 
    if (error == IOLINK_ERROR_NONE)
    {
@@ -286,23 +325,33 @@ iolink_error_t pde_SMI_PDInOut_req (iolink_port_t * port,
          uint8_t pdlen;
          iolink_pde_port_t * pde = iolink_get_pde_ctx (port);
 
-         memset (&arg_block_pdinout, 0, sizeof(arg_block_pdinout_t));
-         arg_block_pdinout.h.port_qualifier_info = pde_port_quality_to_qualifier (port);
+         memset (&arg_block_pdinout, 0, sizeof (arg_block_pdinout_t));
+         arg_block_pdinout.h.port_qualifier_info =
+            pde_port_quality_to_qualifier (port);
          arg_block_pdinout.h.oe = pde->output_enable;
 
          error = AL_GetInputOutput_req (port, &pdlen, arg_block_pdinout.data);
 
          if (error != IOLINK_ERROR_NONE)
          {
-            iolink_smi_errortypes_t smi_error = IOLINK_SMI_ERRORTYPE_DEV_NOT_ACCESSIBLE;
-            iolink_smi_joberror_ind (port, exp_arg_block_id, ref_arg_block_id, smi_error);
+            iolink_smi_errortypes_t smi_error =
+               IOLINK_SMI_ERRORTYPE_DEV_NOT_ACCESSIBLE;
+            iolink_smi_joberror_ind (
+               port,
+               exp_arg_block_id,
+               ref_arg_block_id,
+               smi_error);
          }
          else
          {
             arg_block_pdinout.h.arg_block_id = exp_arg_block_id;
-            uint8_t arg_block_pdinout_len = sizeof(arg_block_pdinout_head_t) + pdlen;
-            iolink_smi_cnf (port, ref_arg_block_id, arg_block_pdinout_len,
-                  (arg_block_t *)&arg_block_pdinout);
+            uint8_t arg_block_pdinout_len =
+               sizeof (arg_block_pdinout_head_t) + pdlen;
+            iolink_smi_cnf (
+               port,
+               ref_arg_block_id,
+               arg_block_pdinout_len,
+               (arg_block_t *)&arg_block_pdinout);
          }
       }
    }

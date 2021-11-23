@@ -17,11 +17,10 @@
 #define OSAL_PL_HW_FILEOPS_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-int _iolink_pl_hw_open ( const char * name);
+int _iolink_pl_hw_open (const char * name);
 
 #ifdef __cplusplus
 }

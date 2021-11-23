@@ -10,15 +10,13 @@
  * See LICENSE file in the project root for full license information.
  ********************************************************************/
 
-
 #ifndef IOLINK_MAX14819_H
 #define IOLINK_MAX14819_H
 
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /**
@@ -45,7 +43,7 @@ typedef struct iolink_14819_cfg
    uint8_t DrvCurrLim;
    uint8_t Clock;
    unsigned int pin[2];
-   void (*register_read_reg_fn)(void *read_reg_function);
+   void (*register_read_reg_fn) (void * read_reg_function);
 } iolink_14819_cfg_t;
 
 /**

@@ -19,26 +19,25 @@
 #include "sys/osal_cc.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define IOLINK_DS_MAX_SIZE 2048
 
-#define DS_STATE_PROPERTY_STATE_MASK (3 << 1)
-#define DS_STATE_PROPERTY_STATE_UPLOAD (1 << 1)
+#define DS_STATE_PROPERTY_STATE_MASK     (3 << 1)
+#define DS_STATE_PROPERTY_STATE_UPLOAD   (1 << 1)
 #define DS_STATE_PROPERTY_STATE_DOWNLOAD (2 << 1)
-#define DS_STATE_PROPERTY_STATE_LOCKED (3 << 1)
-#define DS_STATE_PROPERTY_UPLOAD_REQ BIT(7)
+#define DS_STATE_PROPERTY_STATE_LOCKED   (3 << 1)
+#define DS_STATE_PROPERTY_UPLOAD_REQ     BIT (7)
 
 typedef enum iolink_ds_command
 {
-   DS_CMD_RES = 0x00,
+   DS_CMD_RES      = 0x00,
    DS_CMD_UL_START = 0x01,
-   DS_CMD_UL_END = 0x02,
+   DS_CMD_UL_END   = 0x02,
    DS_CMD_DL_START = 0x03,
-   DS_CMD_DL_END = 0x04,
-   DS_CMD_BREAK = 0x05,
+   DS_CMD_DL_END   = 0x04,
+   DS_CMD_BREAK    = 0x05,
 } iolink_ds_command_t;
 
 typedef enum iolink_ds_state
@@ -150,16 +149,16 @@ typedef enum iolink_fsm_ds_event
    DS_EVENT_NO_UPLOAD,   /* T20 or T43 */
    DS_EVENT_DOWNLOAD,    /* T24 */
 
-   DS_EVENT_MORE_DATA,   /* T30 or T37 */
-   DS_EVENT_READ_DONE,   /* T31 */
-   DS_EVENT_STORE_DATA,  /* T35 */
-   DS_EVENT_UL_DONE,     /* T26 */
-   DS_EVENT_DEV_ERR,     /* T32 or T39 */
-   DS_EVENT_COM_ERR,     /* T33, T34, T36, T40 or T42 */
+   DS_EVENT_MORE_DATA,  /* T30 or T37 */
+   DS_EVENT_READ_DONE,  /* T31 */
+   DS_EVENT_STORE_DATA, /* T35 */
+   DS_EVENT_UL_DONE,    /* T26 */
+   DS_EVENT_DEV_ERR,    /* T32 or T39 */
+   DS_EVENT_COM_ERR,    /* T33, T34, T36, T40 or T42 */
 
-   DS_EVENT_WR_DONE,     /* T38 */
-   DS_EVENT_DL_DONE,     /* T41 */
-   DS_EVENT_INIT,        /* Not in spec. */
+   DS_EVENT_WR_DONE, /* T38 */
+   DS_EVENT_DL_DONE, /* T41 */
+   DS_EVENT_INIT,    /* Not in spec. */
    DS_EVENT_LAST,
 } iolink_fsm_ds_event_t;
 
@@ -171,20 +170,23 @@ iolink_error_t DS_Startup (iolink_port_t * port);
 
 iolink_error_t DS_Upload (iolink_port_t * port);
 
-iolink_error_t DS_Init (iolink_port_t * port, // Not in spec
-                        const portconfiglist_t * cfg_list);
+iolink_error_t DS_Init (
+   iolink_port_t * port, // Not in spec
+   const portconfiglist_t * cfg_list);
 
 bool DS_Chk_Cfg (iolink_port_t * port, const portconfiglist_t * cfg_list);
 
-iolink_error_t ds_SMI_ParServToDS_req (iolink_port_t * port,
-                                    iolink_arg_block_id_t exp_arg_block_id,
-                                    uint16_t arg_block_len,
-                                    arg_block_t * arg_block);
+iolink_error_t ds_SMI_ParServToDS_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 
-iolink_error_t ds_SMI_DSToParServ_req (iolink_port_t * port,
-                                    iolink_arg_block_id_t exp_arg_block_id,
-                                    uint16_t arg_block_len,
-                                    arg_block_t * arg_block);
+iolink_error_t ds_SMI_DSToParServ_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 #ifdef __cplusplus
 }
 #endif

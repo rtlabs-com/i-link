@@ -10,7 +10,6 @@
  * See LICENSE file in the project root for full license information.
  ********************************************************************/
 
-
 #ifndef IOLINK_ODE_H
 #define IOLINK_ODE_H
 
@@ -18,8 +17,7 @@
 #include "iolink_types.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 typedef enum iolink_ode_state
@@ -42,25 +40,29 @@ void iolink_ode_init (iolink_port_t * port);
 iolink_error_t OD_Start (iolink_port_t * port);
 iolink_error_t OD_Stop (iolink_port_t * port);
 
-iolink_error_t ode_SMI_DeviceRead_req (iolink_port_t * port,
-                                       iolink_arg_block_id_t exp_arg_block_id,
-                                       uint16_t arg_block_len,
-                                       arg_block_t * arg_block);
+iolink_error_t ode_SMI_DeviceRead_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 
-iolink_error_t ode_SMI_DeviceWrite_req (iolink_port_t * port,
-                                        iolink_arg_block_id_t exp_arg_block_id,
-                                        uint16_t arg_block_len,
-                                        arg_block_t * arg_block);
+iolink_error_t ode_SMI_DeviceWrite_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 
-iolink_error_t ode_SMI_ParamReadBatch_req (iolink_port_t * port,
-                                       iolink_arg_block_id_t exp_arg_block_id,
-                                       uint16_t arg_block_len,
-                                       arg_block_t * arg_block);
+iolink_error_t ode_SMI_ParamReadBatch_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 
-iolink_error_t ode_SMI_ParamWriteBatch_req (iolink_port_t * port,
-                                        iolink_arg_block_id_t exp_arg_block_id,
-                                        uint16_t arg_block_len,
-                                        arg_block_t * arg_block);
+iolink_error_t ode_SMI_ParamWriteBatch_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 #ifdef __cplusplus
 }
 #endif

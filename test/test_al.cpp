@@ -22,9 +22,10 @@
 
 class ALTest : public TestBase
 {
-protected:
+ protected:
    // Override default setup
-   virtual void SetUp() {
+   virtual void SetUp()
+   {
       TestBase::SetUp(); // Re-use default setup
    };
 };
@@ -32,8 +33,8 @@ protected:
 // Tests
 TEST_F (ALTest, Al_read_param_0_1)
 {
-   uint16_t index = 0;
-   uint8_t subindex = 0;
+   uint16_t index     = 0;
+   uint8_t subindex   = 0;
    uint8_t read_value = 0x12;
 
    for (index = 0; index < 2; index++)
@@ -56,7 +57,7 @@ TEST_F (ALTest, Al_read_param_0_1)
       EXPECT_EQ (mock_iolink_al_write_cnf_cnt, 0);
       EXPECT_EQ (mock_iolink_dl_control_req_cnt, 0);
 
-      mock_iolink_al_data[0] = 0;
+      mock_iolink_al_data[0]  = 0;
       mock_iolink_al_data_len = 0;
       read_value++;
    }
@@ -66,25 +67,28 @@ TEST_F (ALTest, Al_read_isdu_2)
 {
    iolink_al_port_t * al = iolink_get_al_ctx (port);
 
-   uint16_t index = 2;
+   uint16_t index   = 2;
    uint8_t subindex = 0;
-   uint8_t data[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+   uint8_t data[8]  = {1, 2, 3, 4, 5, 6, 7, 8};
 
    EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
    AL_Read_req (port, index, subindex, mock_AL_Read_cnf);
    mock_iolink_job.callback (&mock_iolink_job);
 
    EXPECT_EQ (AL_OD_STATE_Await_DL_ISDU_cnf, al->od_state);
-   DL_ISDUTransport_cnf (port, data, sizeof(data),
-                         IOL_ISERVICE_DEVICE_READ_RESPONSE_POS,
-                         IOLINK_STATUS_NO_ERROR);
+   DL_ISDUTransport_cnf (
+      port,
+      data,
+      sizeof (data),
+      IOL_ISERVICE_DEVICE_READ_RESPONSE_POS,
+      IOLINK_STATUS_NO_ERROR);
    mock_iolink_job.callback (&mock_iolink_job);
    EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
 
    EXPECT_EQ (mock_iolink_al_read_cnf_cnt, 1);
    EXPECT_EQ (mock_iolink_al_read_errortype, IOLINK_SMI_ERRORTYPE_NONE);
-   EXPECT_EQ (mock_iolink_al_data_len, sizeof(data));
-   EXPECT_TRUE (ArraysMatchN (data, mock_iolink_al_data, sizeof(data)));
+   EXPECT_EQ (mock_iolink_al_data_len, sizeof (data));
+   EXPECT_TRUE (ArraysMatchN (data, mock_iolink_al_data, sizeof (data)));
    EXPECT_EQ (mock_iolink_al_write_cnf_cnt, 0);
    EXPECT_EQ (mock_iolink_dl_control_req_cnt, 0);
 }
@@ -93,17 +97,19 @@ TEST_F (ALTest, Al_write_0_err)
 {
    iolink_al_port_t * al = iolink_get_al_ctx (port);
 
-   uint16_t index = 0; /* Not allowed to write to index 0 */
+   uint16_t index   = 0; /* Not allowed to write to index 0 */
    uint8_t subindex = 0;
-   uint8_t data[1] = {0x34};
+   uint8_t data[1]  = {0x34};
 
    EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
-   AL_Write_req (port, index, subindex, sizeof(data), data, mock_AL_Write_cnf);
+   AL_Write_req (port, index, subindex, sizeof (data), data, mock_AL_Write_cnf);
    mock_iolink_job.callback (&mock_iolink_job);
    EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
 
    EXPECT_EQ (mock_iolink_al_write_cnf_cnt, 1);
-   EXPECT_EQ (mock_iolink_al_write_errortype, IOLINK_SMI_ERRORTYPE_APP_DEV); // TODO what to expect here?
+   EXPECT_EQ (
+      mock_iolink_al_write_errortype,
+      IOLINK_SMI_ERRORTYPE_APP_DEV); // TODO what to expect here?
    EXPECT_EQ (mock_iolink_al_read_cnf_cnt, 0);
    EXPECT_EQ (mock_iolink_dl_control_req_cnt, 0);
 }
@@ -112,12 +118,12 @@ TEST_F (ALTest, Al_write_param_1)
 {
    iolink_al_port_t * al = iolink_get_al_ctx (port);
 
-   uint16_t index = 1;
+   uint16_t index   = 1;
    uint8_t subindex = 0;
-   uint8_t data[1] = {0x34};
+   uint8_t data[1]  = {0x34};
 
    EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
-   AL_Write_req (port, index, subindex, sizeof(data), data, mock_AL_Write_cnf);
+   AL_Write_req (port, index, subindex, sizeof (data), data, mock_AL_Write_cnf);
    mock_iolink_job.callback (&mock_iolink_job);
 
    EXPECT_EQ (AL_OD_STATE_Await_DL_param_cnf, al->od_state);
@@ -127,14 +133,14 @@ TEST_F (ALTest, Al_write_param_1)
 
    EXPECT_EQ (mock_iolink_al_write_cnf_cnt, 1);
    EXPECT_EQ (mock_iolink_al_write_errortype, IOLINK_SMI_ERRORTYPE_NONE);
-   EXPECT_EQ (mock_iolink_al_data_len, sizeof(data));
-   EXPECT_TRUE (ArraysMatchN (data, mock_iolink_al_data, sizeof(data)));
+   EXPECT_EQ (mock_iolink_al_data_len, sizeof (data));
+   EXPECT_TRUE (ArraysMatchN (data, mock_iolink_al_data, sizeof (data)));
    EXPECT_EQ (mock_iolink_al_read_cnf_cnt, 0);
    EXPECT_EQ (mock_iolink_dl_control_req_cnt, 0);
 }
 
 // TODO
-//TEST_F (ALTest, Al_write_param_no_isdu_2)
+// TEST_F (ALTest, Al_write_param_no_isdu_2)
 //{
 //   uint16_t index = 2;
 //   uint8_t subindex = 0;
@@ -161,31 +167,35 @@ TEST_F (ALTest, Al_write_param_isdu_2)
 {
    iolink_al_port_t * al = iolink_get_al_ctx (port);
 
-   uint16_t index = 2;
+   uint16_t index   = 2;
    uint8_t subindex = 0;
    uint8_t data[12] = {3, 2, 3, 4, 1, 5, 6, 8, 9, 1};
 
    EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
-   AL_Write_req (port, index, subindex, sizeof(data), data, mock_AL_Write_cnf);
+   AL_Write_req (port, index, subindex, sizeof (data), data, mock_AL_Write_cnf);
    mock_iolink_job.callback (&mock_iolink_job);
 
    EXPECT_EQ (AL_OD_STATE_Await_DL_ISDU_cnf, al->od_state);
-   DL_ISDUTransport_cnf (port, data, sizeof(data),
-                         IOL_ISERVICE_DEVICE_WRITE_RESPONSE_POS,
-                         IOLINK_STATUS_NO_ERROR);
+   DL_ISDUTransport_cnf (
+      port,
+      data,
+      sizeof (data),
+      IOL_ISERVICE_DEVICE_WRITE_RESPONSE_POS,
+      IOLINK_STATUS_NO_ERROR);
    mock_iolink_job.callback (&mock_iolink_job);
    EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
 
    EXPECT_EQ (mock_iolink_al_write_cnf_cnt, 1);
    EXPECT_EQ (mock_iolink_al_write_errortype, IOLINK_SMI_ERRORTYPE_NONE);
-   EXPECT_EQ (mock_iolink_al_data_len, sizeof(data));
-   EXPECT_TRUE (ArraysMatchN (data, mock_iolink_al_data, sizeof(data)));
+   EXPECT_EQ (mock_iolink_al_data_len, sizeof (data));
+   EXPECT_TRUE (ArraysMatchN (data, mock_iolink_al_data, sizeof (data)));
    EXPECT_EQ (mock_iolink_al_read_cnf_cnt, 0);
    EXPECT_EQ (mock_iolink_dl_control_req_cnt, 0);
 }
 
-static inline void test_al_control (iolink_port_t * port,
-                                    iolink_controlcode_t controlcode)
+static inline void test_al_control (
+   iolink_port_t * port,
+   iolink_controlcode_t controlcode)
 {
    iolink_al_port_t * al = iolink_get_al_ctx (port);
 
@@ -244,7 +254,7 @@ TEST_F (ALTest, Al_abort)
 
 TEST_F (ALTest, Al_read_param_abort_0_1)
 {
-   uint16_t index = 0;
+   uint16_t index   = 0;
    uint8_t subindex = 0;
 
    for (index = 0; index < 2; index++)
@@ -263,7 +273,9 @@ TEST_F (ALTest, Al_read_param_abort_0_1)
       EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
 
       EXPECT_EQ (mock_iolink_al_read_cnf_cnt, index + 1);
-      EXPECT_EQ (mock_iolink_al_read_errortype, IOLINK_SMI_ERRORTYPE_APP_DEV); // TODO what to expect here?
+      EXPECT_EQ (
+         mock_iolink_al_read_errortype,
+         IOLINK_SMI_ERRORTYPE_APP_DEV); // TODO what to expect here?
       EXPECT_EQ (mock_iolink_al_data_len, 0);
       EXPECT_EQ (mock_iolink_al_write_cnf_cnt, 0);
       EXPECT_EQ (mock_iolink_dl_control_req_cnt, 0);
@@ -274,7 +286,7 @@ TEST_F (ALTest, Al_read_isdu_abort_2)
 {
    iolink_al_port_t * al = iolink_get_al_ctx (port);
 
-   uint16_t index = 2;
+   uint16_t index   = 2;
    uint8_t subindex = 0;
 
    EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
@@ -289,7 +301,9 @@ TEST_F (ALTest, Al_read_isdu_abort_2)
    EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
 
    EXPECT_EQ (mock_iolink_al_read_cnf_cnt, 1);
-   EXPECT_EQ (mock_iolink_al_read_errortype, IOLINK_SMI_ERRORTYPE_APP_DEV); // TODO what to expect here?
+   EXPECT_EQ (
+      mock_iolink_al_read_errortype,
+      IOLINK_SMI_ERRORTYPE_APP_DEV); // TODO what to expect here?
    EXPECT_EQ (mock_iolink_al_data_len, 0);
    EXPECT_EQ (mock_iolink_al_write_cnf_cnt, 0);
    EXPECT_EQ (mock_iolink_dl_control_req_cnt, 0);
@@ -299,12 +313,12 @@ TEST_F (ALTest, Al_write_param_abort_1)
 {
    iolink_al_port_t * al = iolink_get_al_ctx (port);
 
-   uint16_t index = 1;
+   uint16_t index   = 1;
    uint8_t subindex = 0;
-   uint8_t data[1] = {0x34};
+   uint8_t data[1]  = {0x34};
 
    EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
-   AL_Write_req (port, index, subindex, sizeof(data), data, mock_AL_Write_cnf);
+   AL_Write_req (port, index, subindex, sizeof (data), data, mock_AL_Write_cnf);
    mock_iolink_job.callback (&mock_iolink_job);
 
    EXPECT_EQ (AL_OD_STATE_Await_DL_param_cnf, al->od_state);
@@ -314,11 +328,13 @@ TEST_F (ALTest, Al_write_param_abort_1)
    EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
 
    EXPECT_EQ (mock_iolink_al_write_cnf_cnt, 1);
-   EXPECT_EQ (mock_iolink_al_write_errortype, IOLINK_SMI_ERRORTYPE_APP_DEV); // TODO what to expect here?
+   EXPECT_EQ (
+      mock_iolink_al_write_errortype,
+      IOLINK_SMI_ERRORTYPE_APP_DEV); // TODO what to expect here?
    /* al_data_len is assigned after AL_Write_req()
     * Hence, this is expected
     */
-   EXPECT_EQ (mock_iolink_al_data_len, sizeof(data));
+   EXPECT_EQ (mock_iolink_al_data_len, sizeof (data));
    EXPECT_EQ (mock_iolink_al_read_cnf_cnt, 0);
    EXPECT_EQ (mock_iolink_dl_control_req_cnt, 0);
 }
@@ -327,12 +343,12 @@ TEST_F (ALTest, Al_write_param_abort_isdu_2)
 {
    iolink_al_port_t * al = iolink_get_al_ctx (port);
 
-   uint16_t index = 2;
+   uint16_t index   = 2;
    uint8_t subindex = 0;
    uint8_t data[12] = {3, 2, 3, 4, 1, 5, 6, 8, 9, 1};
 
    EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
-   AL_Write_req (port, index, subindex, sizeof(data), data, mock_AL_Write_cnf);
+   AL_Write_req (port, index, subindex, sizeof (data), data, mock_AL_Write_cnf);
    mock_iolink_job.callback (&mock_iolink_job);
 
    EXPECT_EQ (AL_OD_STATE_Await_DL_ISDU_cnf, al->od_state);
@@ -342,23 +358,24 @@ TEST_F (ALTest, Al_write_param_abort_isdu_2)
    EXPECT_EQ (AL_OD_STATE_OnReq_Idle, al->od_state);
 
    EXPECT_EQ (mock_iolink_al_write_cnf_cnt, 1);
-   EXPECT_EQ (mock_iolink_al_write_errortype, IOLINK_SMI_ERRORTYPE_APP_DEV); // TODO what to expect here?
+   EXPECT_EQ (
+      mock_iolink_al_write_errortype,
+      IOLINK_SMI_ERRORTYPE_APP_DEV); // TODO what to expect here?
    /* al_data_len is assigned after AL_Write_req()
     * Hence, this is expected
     */
-   EXPECT_EQ (mock_iolink_al_data_len, sizeof(data));
+   EXPECT_EQ (mock_iolink_al_data_len, sizeof (data));
    EXPECT_EQ (mock_iolink_al_read_cnf_cnt, 0);
    EXPECT_EQ (mock_iolink_dl_control_req_cnt, 0);
 }
 
 // TODO
-//TEST_F (ALTest, Al_write_param_abort_no_isdu_2)
-
+// TEST_F (ALTest, Al_write_param_abort_no_isdu_2)
 
 TEST_F (ALTest, Al_read_param_0_1_multiple_al_service_calls)
 {
-   uint16_t index = 0;
-   uint8_t subindex = 0;
+   uint16_t index     = 0;
+   uint8_t subindex   = 0;
    uint8_t read_value = 0x12;
 
    for (index = 0; index < 2; index++)
@@ -375,16 +392,18 @@ TEST_F (ALTest, Al_read_param_0_1_multiple_al_service_calls)
       mock_iolink_job.callback (&mock_iolink_job);
       EXPECT_EQ (mock_iolink_al_data_len, 0);
       EXPECT_EQ (mock_iolink_al_read_cnf_cnt, (index * 2) + 1);
-      EXPECT_EQ (mock_iolink_al_read_errortype,
-                 IOLINK_SMI_ERRORTYPE_SERVICE_TEMP_UNAVAILABLE);
+      EXPECT_EQ (
+         mock_iolink_al_read_errortype,
+         IOLINK_SMI_ERRORTYPE_SERVICE_TEMP_UNAVAILABLE);
 
       AL_Write_req (port, index, subindex, 0, NULL, mock_AL_Write_cnf);
       mock_iolink_job.callback (&mock_iolink_job);
       EXPECT_EQ (mock_iolink_al_data_len, 0);
       EXPECT_EQ (mock_iolink_al_write_cnf_cnt, index + 1);
       EXPECT_EQ (mock_iolink_al_read_cnf_cnt, (index * 2) + 1);
-      EXPECT_EQ (mock_iolink_al_read_errortype,
-                 IOLINK_SMI_ERRORTYPE_SERVICE_TEMP_UNAVAILABLE);
+      EXPECT_EQ (
+         mock_iolink_al_read_errortype,
+         IOLINK_SMI_ERRORTYPE_SERVICE_TEMP_UNAVAILABLE);
 
       DL_ReadParam_cnf (port, read_value, IOLINK_STATUS_NO_ERROR);
       mock_iolink_job.callback (&mock_iolink_job);
@@ -397,14 +416,16 @@ TEST_F (ALTest, Al_read_param_0_1_multiple_al_service_calls)
       EXPECT_EQ (mock_iolink_al_write_cnf_cnt, index + 1);
       EXPECT_EQ (mock_iolink_dl_control_req_cnt, 0);
 
-      mock_iolink_al_data[0] = 0;
+      mock_iolink_al_data[0]  = 0;
       mock_iolink_al_data_len = 0;
       read_value++;
    }
 }
 
-static inline void al_verify_events (iolink_port_t * port, uint8_t event_cnt,
-                                     al_event_t * events)
+static inline void al_verify_events (
+   iolink_port_t * port,
+   uint8_t event_cnt,
+   al_event_t * events)
 {
    iolink_al_port_t * al = iolink_get_al_ctx (port);
    unsigned int i;
@@ -444,10 +465,10 @@ TEST_F (ALTest, Al_Event_1)
    al_event_t events[1];
 
    events[0].eventcode = 1;
-   events[0].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[0].mode = IOLINK_EVENT_MODE_SINGLE_SHOT;
-   events[0].type = IOLINK_EVENT_TYPE_NOTIFICATION;
-   events[0].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[0].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[0].mode      = IOLINK_EVENT_MODE_SINGLE_SHOT;
+   events[0].type      = IOLINK_EVENT_TYPE_NOTIFICATION;
+   events[0].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    al_verify_events (port, ARRAY_SIZE (events), events);
 }
@@ -457,16 +478,16 @@ TEST_F (ALTest, Al_Event_2)
    al_event_t events[2];
 
    events[0].eventcode = 1;
-   events[0].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[0].mode = IOLINK_EVENT_MODE_SINGLE_SHOT;
-   events[0].type = IOLINK_EVENT_TYPE_NOTIFICATION;
-   events[0].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[0].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[0].mode      = IOLINK_EVENT_MODE_SINGLE_SHOT;
+   events[0].type      = IOLINK_EVENT_TYPE_NOTIFICATION;
+   events[0].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    events[1].eventcode = 2;
-   events[1].instance = IOLINK_EVENT_INSTANCE_UNKNOWN;
-   events[1].mode = IOLINK_EVENT_MODE_APPEARS;
-   events[1].type = IOLINK_EVENT_TYPE_ERROR;
-   events[1].source = IOLINK_EVENT_SOURCE_MASTER;
+   events[1].instance  = IOLINK_EVENT_INSTANCE_UNKNOWN;
+   events[1].mode      = IOLINK_EVENT_MODE_APPEARS;
+   events[1].type      = IOLINK_EVENT_TYPE_ERROR;
+   events[1].source    = IOLINK_EVENT_SOURCE_MASTER;
    al_verify_events (port, ARRAY_SIZE (events), events);
 }
 
@@ -475,22 +496,22 @@ TEST_F (ALTest, Al_Event_3)
    al_event_t events[3];
 
    events[0].eventcode = 1;
-   events[0].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[0].mode = IOLINK_EVENT_MODE_SINGLE_SHOT;
-   events[0].type = IOLINK_EVENT_TYPE_NOTIFICATION;
-   events[0].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[0].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[0].mode      = IOLINK_EVENT_MODE_SINGLE_SHOT;
+   events[0].type      = IOLINK_EVENT_TYPE_NOTIFICATION;
+   events[0].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    events[1].eventcode = 2;
-   events[1].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[1].mode = IOLINK_EVENT_MODE_APPEARS;
-   events[1].type = IOLINK_EVENT_TYPE_NOTIFICATION;
-   events[1].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[1].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[1].mode      = IOLINK_EVENT_MODE_APPEARS;
+   events[1].type      = IOLINK_EVENT_TYPE_NOTIFICATION;
+   events[1].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    events[2].eventcode = 3;
-   events[2].instance = IOLINK_EVENT_INSTANCE_UNKNOWN;
-   events[2].mode = IOLINK_EVENT_MODE_SINGLE_SHOT;
-   events[2].type = IOLINK_EVENT_TYPE_ERROR;
-   events[2].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[2].instance  = IOLINK_EVENT_INSTANCE_UNKNOWN;
+   events[2].mode      = IOLINK_EVENT_MODE_SINGLE_SHOT;
+   events[2].type      = IOLINK_EVENT_TYPE_ERROR;
+   events[2].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    al_verify_events (port, ARRAY_SIZE (events), events);
 }
@@ -500,28 +521,28 @@ TEST_F (ALTest, Al_Event_4)
    al_event_t events[4];
 
    events[0].eventcode = 10;
-   events[0].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[0].mode = IOLINK_EVENT_MODE_SINGLE_SHOT;
-   events[0].type = IOLINK_EVENT_TYPE_WARNING;
-   events[0].source = IOLINK_EVENT_SOURCE_MASTER;
+   events[0].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[0].mode      = IOLINK_EVENT_MODE_SINGLE_SHOT;
+   events[0].type      = IOLINK_EVENT_TYPE_WARNING;
+   events[0].source    = IOLINK_EVENT_SOURCE_MASTER;
 
    events[1].eventcode = 12;
-   events[1].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[1].mode = IOLINK_EVENT_MODE_DISAPPEARS;
-   events[1].type = IOLINK_EVENT_TYPE_NOTIFICATION;
-   events[1].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[1].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[1].mode      = IOLINK_EVENT_MODE_DISAPPEARS;
+   events[1].type      = IOLINK_EVENT_TYPE_NOTIFICATION;
+   events[1].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    events[2].eventcode = 14;
-   events[2].instance = IOLINK_EVENT_INSTANCE_UNKNOWN;
-   events[2].mode = IOLINK_EVENT_MODE_SINGLE_SHOT;
-   events[2].type = IOLINK_EVENT_TYPE_ERROR;
-   events[2].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[2].instance  = IOLINK_EVENT_INSTANCE_UNKNOWN;
+   events[2].mode      = IOLINK_EVENT_MODE_SINGLE_SHOT;
+   events[2].type      = IOLINK_EVENT_TYPE_ERROR;
+   events[2].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    events[3].eventcode = 16;
-   events[3].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[3].mode = IOLINK_EVENT_MODE_APPEARS;
-   events[3].type = IOLINK_EVENT_TYPE_NOTIFICATION;
-   events[3].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[3].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[3].mode      = IOLINK_EVENT_MODE_APPEARS;
+   events[3].type      = IOLINK_EVENT_TYPE_NOTIFICATION;
+   events[3].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    al_verify_events (port, ARRAY_SIZE (events), events);
 }
@@ -531,34 +552,34 @@ TEST_F (ALTest, Al_Event_5)
    al_event_t events[5];
 
    events[0].eventcode = 20;
-   events[0].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[0].mode = IOLINK_EVENT_MODE_SINGLE_SHOT;
-   events[0].type = IOLINK_EVENT_TYPE_WARNING;
-   events[0].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[0].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[0].mode      = IOLINK_EVENT_MODE_SINGLE_SHOT;
+   events[0].type      = IOLINK_EVENT_TYPE_WARNING;
+   events[0].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    events[1].eventcode = 21;
-   events[1].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[1].mode = IOLINK_EVENT_MODE_DISAPPEARS;
-   events[1].type = IOLINK_EVENT_TYPE_NOTIFICATION;
-   events[1].source = IOLINK_EVENT_SOURCE_MASTER;
+   events[1].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[1].mode      = IOLINK_EVENT_MODE_DISAPPEARS;
+   events[1].type      = IOLINK_EVENT_TYPE_NOTIFICATION;
+   events[1].source    = IOLINK_EVENT_SOURCE_MASTER;
 
    events[2].eventcode = 22;
-   events[2].instance = IOLINK_EVENT_INSTANCE_UNKNOWN;
-   events[2].mode = IOLINK_EVENT_MODE_SINGLE_SHOT;
-   events[2].type = IOLINK_EVENT_TYPE_ERROR;
-   events[2].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[2].instance  = IOLINK_EVENT_INSTANCE_UNKNOWN;
+   events[2].mode      = IOLINK_EVENT_MODE_SINGLE_SHOT;
+   events[2].type      = IOLINK_EVENT_TYPE_ERROR;
+   events[2].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    events[3].eventcode = 23;
-   events[3].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[3].mode = IOLINK_EVENT_MODE_APPEARS;
-   events[3].type = IOLINK_EVENT_TYPE_NOTIFICATION;
-   events[3].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[3].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[3].mode      = IOLINK_EVENT_MODE_APPEARS;
+   events[3].type      = IOLINK_EVENT_TYPE_NOTIFICATION;
+   events[3].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    events[4].eventcode = 0xFFFF;
-   events[4].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[4].mode = IOLINK_EVENT_MODE_SINGLE_SHOT;
-   events[4].type = IOLINK_EVENT_TYPE_WARNING;
-   events[4].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[4].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[4].mode      = IOLINK_EVENT_MODE_SINGLE_SHOT;
+   events[4].type      = IOLINK_EVENT_TYPE_WARNING;
+   events[4].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    al_verify_events (port, ARRAY_SIZE (events), events);
 }
@@ -568,40 +589,40 @@ TEST_F (ALTest, Al_Event_6)
    al_event_t events[6];
 
    events[0].eventcode = 0x8CA0;
-   events[0].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[0].mode = IOLINK_EVENT_MODE_SINGLE_SHOT;
-   events[0].type = IOLINK_EVENT_TYPE_WARNING;
-   events[0].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[0].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[0].mode      = IOLINK_EVENT_MODE_SINGLE_SHOT;
+   events[0].type      = IOLINK_EVENT_TYPE_WARNING;
+   events[0].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    events[1].eventcode = 0x8CA1;
-   events[1].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[1].mode = IOLINK_EVENT_MODE_DISAPPEARS;
-   events[1].type = IOLINK_EVENT_TYPE_NOTIFICATION;
-   events[1].source = IOLINK_EVENT_SOURCE_MASTER;
+   events[1].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[1].mode      = IOLINK_EVENT_MODE_DISAPPEARS;
+   events[1].type      = IOLINK_EVENT_TYPE_NOTIFICATION;
+   events[1].source    = IOLINK_EVENT_SOURCE_MASTER;
 
    events[2].eventcode = 0x8CCC;
-   events[2].instance = IOLINK_EVENT_INSTANCE_UNKNOWN;
-   events[2].mode = IOLINK_EVENT_MODE_APPEARS;
-   events[2].type = IOLINK_EVENT_TYPE_ERROR;
-   events[2].source = IOLINK_EVENT_SOURCE_MASTER;
+   events[2].instance  = IOLINK_EVENT_INSTANCE_UNKNOWN;
+   events[2].mode      = IOLINK_EVENT_MODE_APPEARS;
+   events[2].type      = IOLINK_EVENT_TYPE_ERROR;
+   events[2].source    = IOLINK_EVENT_SOURCE_MASTER;
 
    events[3].eventcode = 0x8DDD;
-   events[3].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[3].mode = IOLINK_EVENT_MODE_APPEARS;
-   events[3].type = IOLINK_EVENT_TYPE_NOTIFICATION;
-   events[3].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[3].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[3].mode      = IOLINK_EVENT_MODE_APPEARS;
+   events[3].type      = IOLINK_EVENT_TYPE_NOTIFICATION;
+   events[3].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    events[4].eventcode = 0x8DFE;
-   events[4].instance = IOLINK_EVENT_INSTANCE_APPLICATION;
-   events[4].mode = IOLINK_EVENT_MODE_SINGLE_SHOT;
-   events[4].type = IOLINK_EVENT_TYPE_WARNING;
-   events[4].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[4].instance  = IOLINK_EVENT_INSTANCE_APPLICATION;
+   events[4].mode      = IOLINK_EVENT_MODE_SINGLE_SHOT;
+   events[4].type      = IOLINK_EVENT_TYPE_WARNING;
+   events[4].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    events[5].eventcode = 0x8DFF;
-   events[5].instance = IOLINK_EVENT_INSTANCE_UNKNOWN;
-   events[5].mode = IOLINK_EVENT_MODE_SINGLE_SHOT;
-   events[5].type = IOLINK_EVENT_TYPE_ERROR;
-   events[5].source = IOLINK_EVENT_SOURCE_DEVICE;
+   events[5].instance  = IOLINK_EVENT_INSTANCE_UNKNOWN;
+   events[5].mode      = IOLINK_EVENT_MODE_SINGLE_SHOT;
+   events[5].type      = IOLINK_EVENT_TYPE_ERROR;
+   events[5].source    = IOLINK_EVENT_SOURCE_DEVICE;
 
    al_verify_events (port, ARRAY_SIZE (events), events);
 }
@@ -621,12 +642,12 @@ TEST_F (ALTest, Al_SetOutput)
 
 TEST_F (ALTest, Al_GetInput)
 {
-   uint8_t offset = 0;
-   uint8_t data[14] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
+   uint8_t offset        = 0;
+   uint8_t data[14]      = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
    uint8_t pdin_data[32] = {0};
    uint8_t pdin_data_len = 0;
    uint8_t exp_newinput_ind_cnt = mock_iolink_al_newinput_inf_cnt;
-   uint8_t exp_al_data_len = sizeof(data);
+   uint8_t exp_al_data_len      = sizeof (data);
 
    DL_PDInputTransport_ind (port, data, exp_al_data_len);
    exp_newinput_ind_cnt++;

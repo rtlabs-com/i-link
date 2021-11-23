@@ -17,8 +17,7 @@
 #define OSAL_DRV_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #include <pthread.h>
@@ -28,26 +27,24 @@ struct drv;
 
 typedef struct drv_ops
 {
-   int     (*open) (struct drv * drv, const char * name, int flags, int mode);
-   int     (*close) (struct drv * drv, void * arg);
-   ssize_t (*read) (struct drv * drv, void * arg, void * buf,
-                   size_t nbytes);
-   ssize_t (*write) (struct drv * drv, void * arg, const void * buf,
-                    size_t nbytes);
-   int     (*ioctl) (struct drv * drv, void * arg, int req, void * req_arg);
+   int (*open) (struct drv * drv, const char * name, int flags, int mode);
+   int (*close) (struct drv * drv, void * arg);
+   ssize_t (*read) (struct drv * drv, void * arg, void * buf, size_t nbytes);
+   ssize_t (*write) (struct drv * drv, void * arg, const void * buf, size_t nbytes);
+   int (*ioctl) (struct drv * drv, void * arg, int req, void * req_arg);
 } drv_ops_t;
 
 typedef struct drv
 {
    char * name;
-   pthread_mutex_t *mtx;
+   pthread_mutex_t * mtx;
    const drv_ops_t * ops;
 } drv_t;
 
-drv_t * fd_get_driver(int fd);
-void * fd_get_arg(int fd);
-int fd_set_driver(int fd, drv_t * drv, void * arg);
-drv_t * find_driver_by_name(const char * name);
+drv_t * fd_get_driver (int fd);
+void * fd_get_arg (int fd);
+int fd_set_driver (int fd, drv_t * drv, void * arg);
+drv_t * find_driver_by_name (const char * name);
 
 #ifdef __cplusplus
 }
