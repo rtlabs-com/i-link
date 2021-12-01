@@ -22,6 +22,8 @@
 #define CC_PACKED_END
 #endif
 
+#include <sys/osal_cc.h>
+
 #ifndef COMPILETIME_ASSERT
 /* Assert that a compile-time constant expression is true. Trigger a
    compilation error otherwise. The only use of the first two macros
@@ -37,7 +39,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <sys/osal_cc.h>
 
 #ifdef __linux__
 #include <osal_drv.h>
