@@ -46,7 +46,7 @@ typedef struct iolink_hw_ops
       void * arg,
       uint8_t * cqerr,
       uint8_t * devdly);
-   void (*get_data) (
+   bool (*get_data) (
       struct iolink_hw_drv * iolink_hw,
       void * arg,
       uint8_t * rxdata,

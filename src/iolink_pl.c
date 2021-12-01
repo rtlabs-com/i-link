@@ -72,11 +72,11 @@ void iolink_pl_set_cycletime (iolink_port_t * port, uint8_t cycbyte)
    iolink_pl_hw_set_cycletime (pl->fd, cycbyte);
 }
 
-void iolink_pl_get_data (iolink_port_t * port, uint8_t * rxdata, uint8_t len)
+bool iolink_pl_get_data (iolink_port_t * port, uint8_t * rxdata, uint8_t len)
 {
    iolink_pl_port_t * pl = iolink_get_pl_ctx (port);
 
-   iolink_pl_hw_get_data (pl->fd, rxdata, len);
+   return iolink_pl_hw_get_data (pl->fd, rxdata, len);
 }
 
 void iolink_pl_get_error (iolink_port_t * port, uint8_t * cqerr, uint8_t * devdly)

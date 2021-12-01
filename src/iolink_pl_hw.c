@@ -91,13 +91,15 @@ void iolink_pl_hw_disable_cycle_timer (int fd)
    UNLOCK (drv);
 }
 
-void iolink_pl_hw_get_data (int fd, uint8_t * rxdata, uint8_t len)
+bool iolink_pl_hw_get_data (int fd, uint8_t * rxdata, uint8_t len)
 {
    GET_ARG_AND_LOCK (fd);
 
-   iolink_hw->ops->get_data (iolink_hw, arg, rxdata, len);
+   bool result = iolink_hw->ops->get_data (iolink_hw, arg, rxdata, len);
 
    UNLOCK (drv);
+
+   return result;
 }
 
 void iolink_pl_hw_get_error (int fd, uint8_t * cqerr, uint8_t * devdly)

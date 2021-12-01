@@ -593,7 +593,7 @@ static void iolink_pl_max14819_get_error (
    os_mutex_unlock (iolink->exclusive);
 }
 
-static void iolink_pl_max14819_get_data (
+static bool iolink_pl_max14819_get_data (
    iolink_hw_drv_t * iolink_hw,
    void * arg,
    uint8_t * rxdata,
@@ -615,29 +615,40 @@ static void iolink_pl_max14819_get_data (
    {
       LOG_DEBUG (
          IOLINK_PL_LOG,
-         "%s: Rxbytes in LVL-reg (%d) does not match bytes in RX-reg (%d)\n",
+         "%s [fd/ch: %d/%d]: RxFIFOLvl (%d) != TxRxData (%d), len = %d\n",
          __func__,
+         iolink->fd_spi,
+         ch,
          rxbytes,
-         RxBytesAct);
+         RxBytesAct,
+         len);
    }
 
    if (len < rxbytes)
    {
       LOG_ERROR (
          IOLINK_PL_LOG,
-         "%s: Read buffer too small. Needed size: %d. Actual size: %d",
+         "%s [fd/ch: %d/%d]: Read buffer too small. Needed: %d. Actual: %d",
          __func__,
+         iolink->fd_spi,
+         ch,
          rxbytes,
          len);
       rxbytes = len;
    }
 
-   uint8_t inband = iolink_14819_burst_read_rx (iolink, ch, rxdata, rxbytes);
-   if (inband & MAX14819_SPI_INBAND_IRQ)
+   if (rxbytes > 0)
    {
-      iolink_pl_max14819_pl_handler ((iolink_hw_drv_t *)iolink, (void *)ch);
+      uint8_t inband = iolink_14819_burst_read_rx (iolink, ch, rxdata, rxbytes);
+      if ((inband & MAX14819_SPI_INBAND_IRQ) != 0)
+      {
+         iolink_pl_max14819_pl_handler ((iolink_hw_drv_t *)iolink, (void *)ch);
+      }
    }
+
    os_mutex_unlock (iolink->exclusive);
+
+   return (rxbytes > 0);
 }
 
 static void iolink_pl_max14819_send_msg (iolink_hw_drv_t * iolink_hw, void * arg)
