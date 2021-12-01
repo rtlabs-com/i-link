@@ -40,7 +40,7 @@ void iolink_pl_handler (iolink_port_t * port);
 iolink_baudrate_t iolink_pl_get_baudrate (iolink_port_t * port);
 uint8_t iolink_pl_get_cycletime (iolink_port_t * port);
 void iolink_pl_set_cycletime (iolink_port_t * port, uint8_t cycbyte);
-void iolink_pl_get_data (iolink_port_t * port, uint8_t * rxdata, uint8_t len);
+bool iolink_pl_get_data (iolink_port_t * port, uint8_t * rxdata, uint8_t len);
 void iolink_pl_get_error (iolink_port_t * port, uint8_t * cqerr, uint8_t * devdly);
 bool iolink_pl_init_sdci (iolink_port_t * port);
 

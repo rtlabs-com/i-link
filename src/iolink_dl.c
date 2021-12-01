@@ -2976,12 +2976,14 @@ static void dl_main (void * arg)
          if (dl->triggered_events & IOLINK_PL_EVENT_RXRDY)
          {
             // Event handler for data ready
-            iolink_pl_get_data (
-               port,
-               dl->rxbuffer,
-               dl->message_handler.od_len + dl->message_handler.pd_rxlen + 1);
-            dl->dataready = true;
-            iolink_dl_message_h_sm (port);
+            if (iolink_pl_get_data (
+                   port,
+                   dl->rxbuffer,
+                   dl->message_handler.od_len + dl->message_handler.pd_rxlen + 1))
+            {
+               dl->dataready = true;
+               iolink_dl_message_h_sm (port);
+            }
          }
 
          if (dl->triggered_events & IOLINK_PL_EVENT_RXERR)

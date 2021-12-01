@@ -74,7 +74,7 @@ void iolink_pl_hw_enable_cycle_timer (int fd);
 
 void iolink_pl_hw_disable_cycle_timer (int fd);
 
-void iolink_pl_hw_get_data (int fd, uint8_t * rxdata, uint8_t len);
+bool iolink_pl_hw_get_data (int fd, uint8_t * rxdata, uint8_t len);
 void iolink_pl_hw_get_error (int fd, uint8_t * cqerr, uint8_t * devdly);
 void iolink_pl_hw_send_msg (int fd);
 void iolink_pl_hw_dl_msg (int fd, uint8_t rxbytes, uint8_t txbytes, uint8_t * data);
