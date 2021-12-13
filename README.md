@@ -9,7 +9,8 @@ Web resources
 * Continuous integration: [https://github.com/rtlabs-com/i-link/actions](https://github.com/rtlabs-com/i-link/actions)
 * RT-Labs (stack integration, certification services and training): [https://rt-labs.com](https://rt-labs.com)
 
-[![Build Status](https://travis-ci.org/rtlabs-com/i-link.svg?branch=master)](https://travis-ci.org/rtlabs-com/i-link)
+[![Build Status](https://github.com/rtlabs-com/i-link/workflows/Build/badge.svg?branch=master)](https://github.com/rtlabs-com/i-link/actions?workflow=Build)
+[![CodeQL](https://github.com/rtlabs-com/i-link/workflows/CodeQL/badge.svg?branch=master)](https://github.com/rtlabs-com/i-link/actions?workflow=CodeQL)
 
 i-link
 -----
