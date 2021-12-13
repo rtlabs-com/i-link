@@ -14,14 +14,14 @@ add_executable(irq_test
   util/irq_test.c
   )
 
-add_executable(iol_master_sample_app
+add_executable(iol_master_ifm_sample_app
   iolink_smi.c
   iolink_ifm.c
   iolink_handler.c
   iol_master_sample_app.c
   )
 
-target_include_directories(iol_master_sample_app
+target_include_directories(iol_master_ifm_sample_app
   PRIVATE
   ${IOLINK_SOURCE_DIR}/src
   ${IOLINK_BINARY_DIR}/src
@@ -29,5 +29,5 @@ target_include_directories(iol_master_sample_app
 
 include_directories(${OSAL_INCLUDES})
 
-target_link_libraries (iol_master_sample_app PUBLIC iolmaster)
+target_link_libraries (iol_master_ifm_sample_app PUBLIC iolmaster)
 target_link_libraries (irq_test PUBLIC pthread)

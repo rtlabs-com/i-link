@@ -10,7 +10,7 @@
 # See LICENSE file in the project root for full license information.
 #*******************************************************************/
 
-cmake_minimum_required (VERSION 3.13)
+cmake_minimum_required (VERSION 3.14)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/tools")
 project (IOLINKMASTER VERSION 0.1.0)
@@ -86,7 +86,7 @@ if (${BUILD_TESTS})
   add_subdirectory (test)
 endif (${BUILD_TESTS})
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  add_subdirectory (sample_app)
+  add_subdirectory (samples/ifm_sample_app)
 endif ()
 
 # Doxygen configuration
