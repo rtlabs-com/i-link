@@ -5,9 +5,12 @@
  * | |   | |_  _ | || (_| || |_) |\__ \
  * |_|    \__|(_)|_| \__,_||_.__/ |___/
  *
- * http://www.rt-labs.com
+ * www.rt-labs.com
  * Copyright 2019 rt-labs AB, Sweden.
- * See LICENSE file in the project root for full license information.
+ *
+ * This software is dual-licensed under GPLv3 and a commercial
+ * license. See the file LICENSE.md distributed with this software for
+ * full license information.
  ********************************************************************/
 
 #ifndef IOLINK_H
