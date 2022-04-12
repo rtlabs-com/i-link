@@ -17,7 +17,6 @@ cmake_minimum_required (VERSION 3.14)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/tools")
 project (IOLINKMASTER VERSION 0.1.0)
-include(CTest)
 
 # Set required standard level
 set (CMAKE_C_STANDARD 99)
@@ -27,12 +26,20 @@ set (CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_OUTPUT_EXTENSION_REPLACE 1)
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1)
 
-# Options
+# Default to installing in build directory
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX ${IOLINKMASTER_BINARY_DIR}/install
+    CACHE PATH "Default install path" FORCE)
+endif()
+
+include(AddOsal)
 include(CMakeDependentOption)
+
+# Options
 
 option (BUILD_SHARED_LIBS "Build shared library" OFF)
 option (LOG_ENABLE "Enable logging" OFF)
-option (BUILD_TESTS "Build unit tests" OFF)
+option (BUILD_TESTING "Build unit tests" OFF)
 
 set(LOG_STATE_VALUES "ON;OFF")
 set(LOG_LEVEL_VALUES "DEBUG;INFO;WARNING;ERROR")
@@ -85,9 +92,10 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${CMAKE_SYSTEM_NAME}.cmake)
 
 # Source paths
 add_subdirectory (src)
-if (${BUILD_TESTS})
+if (BUILD_TESTING)
+  include(CTest)
   add_subdirectory (test)
-endif (${BUILD_TESTS})
+endif (BUILD_TESTING)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_subdirectory (samples/ifm_sample_app)
 endif ()

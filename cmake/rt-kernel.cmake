@@ -14,8 +14,6 @@
 #*******************************************************************/
 
 set(OSAL_INCLUDES
-  ${IOLINKMASTER_SOURCE_DIR}/../osal/include
-  ${IOLINKMASTER_SOURCE_DIR}/../osal/src/rt-kernel
   ${RTK}/include
   ${RTK}/include/kern
   ${RTK}/include/arch/${ARCH}

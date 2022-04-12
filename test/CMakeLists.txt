@@ -15,11 +15,6 @@
 
 include(AddGoogleTest)
 
-set(OSAL_UUT
-  ${IOLINKMASTER_SOURCE_DIR}/../osal/src/linux/osal.c
-  ${IOLINKMASTER_SOURCE_DIR}/../osal/src/linux/osal_log.c
-  )
-
 add_definitions(
   -DUNIT_TEST
   )
@@ -33,7 +28,6 @@ add_executable(iol_test
   ${IOLINKMASTER_SOURCE_DIR}/src/iolink_ds.c
   ${IOLINKMASTER_SOURCE_DIR}/src/iolink_ode.c
   ${IOLINKMASTER_SOURCE_DIR}/src/iolink_pde.c
-  ${OSAL_UUT}
 
   # Unit tests
   test_sm.cpp
@@ -53,5 +47,8 @@ add_executable(iol_test
   )
 
 include_directories(${OSAL_INCLUDES} .)
-target_link_libraries(iol_test PUBLIC ${OSAL_LIBS})
+target_link_libraries(iol_test PUBLIC osal)
 add_gtest(iol_test)
+
+# No need for gmock
+set(BUILD_GMOCK OFF CACHE BOOL "")

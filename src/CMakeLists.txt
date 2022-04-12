@@ -58,7 +58,7 @@ generate_export_header(iolmaster
 
 include_directories(${OSAL_INCLUDES})
 
-target_link_libraries(iolmaster ${OSAL_LIBS})
+target_link_libraries(iolmaster osal)
 
 set_property(TARGET iolmaster PROPERTY POSITION_INDEPENDENT_CODE ON)
 
