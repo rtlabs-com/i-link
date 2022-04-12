@@ -14,19 +14,11 @@
 #*******************************************************************/
 
 set(OSAL_SOURCES
-  ${IOLINKMASTER_SOURCE_DIR}/../osal/src/linux/osal.c
-  ${IOLINKMASTER_SOURCE_DIR}/../osal/src/linux/osal_log.c
   ${IOLINKMASTER_SOURCE_DIR}/iol_osal/linux/osal_drv.c
   ${IOLINKMASTER_SOURCE_DIR}/iol_osal/linux/osal_fileops.c
   )
 set(OSAL_INCLUDES
-  ${IOLINKMASTER_SOURCE_DIR}/../osal/include
-  ${IOLINKMASTER_SOURCE_DIR}/../osal/src/linux
   ${IOLINKMASTER_SOURCE_DIR}/iol_osal/include
-  )
-set(OSAL_LIBS
-  "pthread"
-  "rt"
   )
 
 set(GOOGLE_TEST_INDIVIDUAL TRUE)
