@@ -58,6 +58,7 @@ typedef struct iolink_port
 
 typedef struct iolink_m
 {
+   bool has_exited;
    os_thread_t * thread;
    os_mbox_t * mbox;           /* Mailbox for job submission */
    os_mbox_t * mbox_avail;     /* Mailbox for available jobs */
@@ -156,14 +157,15 @@ static inline iolink_error_t common_smi_check (
 
 static void iolink_main (void * arg)
 {
+   iolink_m_t * master = arg;
    bool running = true;
 
    /* Main loop */
    while (running)
    {
-      iolink_m_t * master = arg;
       iolink_job_t * job;
 
+      CC_ASSERT (master->mbox_avail != NULL);
       os_mbox_fetch (master->mbox, (void **)&job, OS_WAIT_FOREVER);
 
       CC_ASSERT (job != NULL);
@@ -244,6 +246,8 @@ static void iolink_main (void * arg)
          break;
       }
    }
+
+   master->has_exited = true;
 }
 
 /* Stack internal API */
@@ -491,6 +495,8 @@ iolink_m_t * iolink_m_init (const iolink_m_cfg_t * m_cfg)
       return NULL;
    }
 
+   master->has_exited = false;
+
    master->port_cnt = m_cfg->port_cnt;
    master->cb_arg   = m_cfg->cb_arg;
    master->cb_smi   = m_cfg->cb_smi;
@@ -532,6 +538,7 @@ iolink_m_t * iolink_m_init (const iolink_m_cfg_t * m_cfg)
       os_mbox_post (master->mbox_api_avail, &master->job_api[i], 0);
    }
 
+   CC_ASSERT (master->mbox_avail != NULL);
    master->thread = os_thread_create (
       "iolink_m_thread",
       m_cfg->master_thread_prio,
@@ -561,9 +568,11 @@ void iolink_m_deinit (iolink_m_t ** m)
    {
       CC_ASSERT (0);
    }
-   os_usleep (1000);
 
-   // TODO: os_thread_destroy (master->thread);
+   while (master->has_exited == false)
+   {
+      os_usleep (1 * 1000);
+   }
 
    for (i = 0; i < master->port_cnt; i++)
    {
