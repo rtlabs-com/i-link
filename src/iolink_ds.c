@@ -14,6 +14,7 @@
  ********************************************************************/
 
 #ifdef UNIT_TEST
+#include "mocks.h"
 #define iolink_fetch_avail_job mock_iolink_fetch_avail_job
 #define iolink_post_job        mock_iolink_post_job
 #define DS_Ready               mock_DS_Ready

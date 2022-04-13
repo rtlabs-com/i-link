@@ -80,7 +80,7 @@ void (*mock_iolink_al_write_cnf_cb) (
 void (*mock_iolink_al_read_cnf_cb) (
    iolink_port_t * port,
    uint8_t len,
-   uint8_t * data,
+   const uint8_t * data,
    iolink_smi_errortypes_t errortype);
 
 uint8_t mock_iolink_smi_cnf_cnt            = 0;
@@ -264,8 +264,7 @@ iolink_error_t mock_DL_WriteParam_req (
 
 iolink_error_t mock_DL_Control_req (
    iolink_port_t * port,
-   iolink_controlcode_t controlcode,
-   void (*dl_control_cnf_cb) (iolink_port_t * port))
+   iolink_controlcode_t controlcode)
 {
    mock_iolink_dl_control_req_cnt++;
 
@@ -297,7 +296,7 @@ iolink_error_t mock_AL_Read_req (
    void (*al_read_cnf_cb) (
       iolink_port_t * port,
       uint8_t len,
-      uint8_t * data,
+      const uint8_t * data,
       iolink_smi_errortypes_t errortype))
 {
    mock_iolink_al_read_cnf_cb = al_read_cnf_cb;
@@ -378,18 +377,8 @@ iolink_error_t mock_AL_Control_ind (
 
 iolink_error_t mock_AL_SetOutput_req (
    iolink_port_t * port,
-   uint8_t len,
    uint8_t * data)
 {
-   if (len <= sizeof (mock_iolink_dl_pdout_data))
-   {
-      mock_iolink_dl_pdout_data_len = len;
-      memcpy (mock_iolink_dl_pdout_data, data, len);
-   }
-   else
-   {
-      CC_ASSERT (0);
-   }
    mock_iolink_al_setoutput_req_cnt++;
 
    return IOLINK_ERROR_NONE;
@@ -447,19 +436,8 @@ iolink_error_t mock_AL_NewInput_ind (iolink_port_t * port)
 
 iolink_error_t mock_DL_PDOutputUpdate_req (
    iolink_port_t * port,
-   uint8_t len,
    uint8_t * outputdata)
 {
-   if (len <= sizeof (mock_iolink_dl_pdout_data))
-   {
-      mock_iolink_dl_pdout_data_len = len;
-      memcpy (mock_iolink_dl_pdout_data, outputdata, len);
-   }
-   else
-   {
-      CC_ASSERT (0);
-   }
-
    return IOLINK_ERROR_NONE;
 }
 

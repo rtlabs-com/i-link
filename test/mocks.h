@@ -24,7 +24,7 @@ extern "C" {
 #include "iolink_max14819.h"
 #include "osal.h"
 
-#include <cstddef>
+#include <stddef.h>
 #include <stdint.h>
 
 extern uint8_t mock_iolink_revisionid;
@@ -93,7 +93,7 @@ extern void (*mock_iolink_al_write_cnf_cb) (
 extern void (*mock_iolink_al_read_cnf_cb) (
    iolink_port_t * port,
    uint8_t len,
-   uint8_t * data,
+   const uint8_t * data,
    iolink_smi_errortypes_t errortype);
 
 iolink_error_t mock_DL_Write_req (
@@ -119,15 +119,13 @@ iolink_error_t mock_DL_ISDUTransport_req (
    iolink_isdu_vl_t * valuelist);
 iolink_error_t mock_DL_Control_req (
    iolink_port_t * port,
-   iolink_controlcode_t controlcode,
-   void (*dl_control_cnf_cb) (iolink_port_t * port));
+   iolink_controlcode_t controlcode);
 iolink_error_t mock_DL_PDOutputGet_req (
    iolink_port_t * port,
    uint8_t * len,
    uint8_t * data);
 iolink_error_t mock_DL_PDOutputUpdate_req (
    iolink_port_t * port,
-   uint8_t len,
    uint8_t * outputdata);
 iolink_error_t mock_DL_PDOutputUpdate (
    iolink_port_t * port,
@@ -140,7 +138,7 @@ iolink_error_t mock_AL_Read_req (
    void (*al_read_cnf_cb) (
       iolink_port_t * port,
       uint8_t len,
-      uint8_t * data,
+      const uint8_t * data,
       iolink_smi_errortypes_t errortype));
 void mock_AL_Read_cnf (
    iolink_port_t * port,
@@ -167,7 +165,6 @@ iolink_error_t mock_AL_Control_ind (
    iolink_controlcode_t controlcode);
 iolink_error_t mock_AL_SetOutput_req (
    iolink_port_t * port,
-   uint8_t len,
    uint8_t * data);
 iolink_error_t mock_AL_GetInputOutput_req (
    iolink_port_t * port,

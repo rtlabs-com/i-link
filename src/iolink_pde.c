@@ -14,6 +14,7 @@
  ********************************************************************/
 
 #ifdef UNIT_TEST
+#include "mocks.h"
 #define AL_Control_req             mock_AL_Control_req
 #define AL_GetInput_req            mock_AL_GetInput_req
 #define AL_GetInputOutput_req      mock_AL_GetInputOutput_req
