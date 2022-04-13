@@ -14,6 +14,7 @@
  ********************************************************************/
 
 #ifdef UNIT_TEST
+#include "mocks.h"
 #define DL_ReadParam_req           mock_DL_ReadParam_req
 #define DL_WriteParam_req          mock_DL_WriteParam_req
 #define DL_ISDUTransport_req       mock_DL_ISDUTransport_req

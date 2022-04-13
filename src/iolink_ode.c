@@ -14,6 +14,7 @@
  ********************************************************************/
 
 #ifdef UNIT_TEST
+#include "mocks.h"
 #define AL_Read_req                mock_AL_Read_req
 #define AL_Write_req               mock_AL_Write_req
 #define iolink_post_job            mock_iolink_post_job

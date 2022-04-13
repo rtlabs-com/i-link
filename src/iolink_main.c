@@ -14,6 +14,7 @@
  ********************************************************************/
 
 #ifdef UNIT_TEST
+#include "mocks.h"
 #define iolink_pl_init mock_iolink_pl_init
 #endif /* UNIT_TEST */
 

@@ -14,6 +14,7 @@
  ********************************************************************/
 
 #ifdef UNIT_TEST
+#include "mocks.h"
 #define DL_Write_req            mock_DL_Write_req
 #define DL_Read_req             mock_DL_Read_req
 #define DL_SetMode_req          mock_DL_SetMode_req
