@@ -83,6 +83,7 @@ static void iolink_dl_isdu_h_sm (iolink_port_t * port);
 static void iolink_dl_cmd_h_sm (iolink_port_t * port);
 static void iolink_dl_ev_h_sm (iolink_port_t * port);
 static void iolink_dl_od_h_sm (iolink_port_t * port);
+static void iolink_dl_message_h_sm (iolink_port_t * port);
 static iolink_error_t OD_req (
    iolink_dl_t * dl,
    iolink_rwdirection_t rwdirection,
@@ -396,9 +397,12 @@ static inline void EH_Conf (iolink_port_t * port, EHCmd_t cmd)
    iolink_dl_ev_h_sm (port);
 }
 
-static inline void MH_Conf (iolink_dl_t * dl, MHCmd_t cmd)
+static inline void MH_Conf (iolink_port_t * port, MHCmd_t cmd)
 {
+   iolink_dl_t * dl = iolink_get_dl_ctx(port);
+   
    dl->message_handler.mhcmd = cmd;
+   iolink_dl_message_h_sm(port);
 }
 
 static inline void iolink_dl_mode_h_sm_goto_operate (iolink_port_t * port)
@@ -414,9 +418,8 @@ static inline void iolink_dl_mode_h_sm_goto_operate (iolink_port_t * port)
       PH_Conf (port, IOL_PHCMD_INTERLEAVE);
    }
 
-   MH_Conf (dl, IOL_MHCMD_OPERATE);
+   MH_Conf (port, IOL_MHCMD_OPERATE);
    DL_Mode_ind (port, IOLINK_MHMODE_OPERATE);
-   os_event_set (dl->event, IOLINK_DL_EVENT_MH);
    dl->mode_handler.state = IOL_DL_MDH_ST_OPERATE_4;
 }
 
@@ -435,9 +438,8 @@ static inline void iolink_dl_mode_h_sm_goto_idle (
 
    set_OH_IH_EH_Conf_active (port, false);
    CH_Conf (port, IOL_CHCMD_INACTIVE);
-   MH_Conf (dl, IOL_MHCMD_INACTIVE);
+   MH_Conf (port, IOL_MHCMD_INACTIVE);
    DL_Mode_ind (port, mode);
-   os_event_set (dl->event, IOLINK_DL_EVENT_MH);
    dl->mode_handler.mhinfo = IOLINK_MHINFO_NONE;
    dl->mode_handler.state  = IOL_DL_MDH_ST_IDLE_0;
 }
@@ -447,9 +449,8 @@ static inline void iolink_dl_mode_h_sm_goto_startup (iolink_port_t * port)
    iolink_dl_t * dl = iolink_get_dl_ctx (port);
 
    set_OH_IH_EH_Conf_active (port, false);
-   MH_Conf (dl, IOL_MHCMD_STARTUP);
+   MH_Conf (port, IOL_MHCMD_STARTUP);
    DL_Mode_ind (port, IOLINK_MHMODE_STARTUP);
-   os_event_set (dl->event, IOLINK_DL_EVENT_MH);
    dl->mode_handler.state = IOL_DL_MDH_ST_STARTUP_2;
 }
 
@@ -498,9 +499,8 @@ static void iolink_dl_mode_h_sm (iolink_port_t * port)
       if (dl->mode_handler.dl_mode == IOLINK_DLMODE_PREOPERATE) // T3
       {
          set_OH_IH_EH_Conf_active (port, true);
-         MH_Conf (dl, IOL_MHCMD_PREOPERATE);
+         MH_Conf (port, IOL_MHCMD_PREOPERATE);
          DL_Mode_ind (port, IOLINK_MHMODE_PREOPERATE);
-         os_event_set (dl->event, IOLINK_DL_EVENT_MH);
          dl->mode_handler.state = IOL_DL_MDH_ST_PREOPERATE_3;
       }
       else if (dl->mode_handler.dl_mode == IOLINK_DLMODE_OPERATE) // T5
@@ -534,8 +534,7 @@ static void iolink_dl_mode_h_sm (iolink_port_t * port)
       }
       else if (dl->mode_handler.dl_mode == IOLINK_DLMODE_INACTIVE) // SDCI_TC_0214
       {
-         MH_Conf (dl, IOL_MHCMD_OPERATE);
-         os_event_set (dl->event, IOLINK_DL_EVENT_MH);
+         MH_Conf (port, IOL_MHCMD_OPERATE);
       }
       else if (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST) // T9
       {
