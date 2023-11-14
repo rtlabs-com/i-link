@@ -42,6 +42,8 @@
       return 1;                                                                \
    }
 
+iolink_app_master_ctx_t iolink_app_master;
+
 static void SMI_cnf_cb (
    void * arg,
    uint8_t portnumber,
