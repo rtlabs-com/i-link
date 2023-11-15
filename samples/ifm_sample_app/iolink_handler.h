@@ -114,7 +114,7 @@ typedef struct iolink_app_master_ctx
    uint32_t masterid;
 } iolink_app_master_ctx_t;
 
-iolink_app_master_ctx_t iolink_app_master;
+extern iolink_app_master_ctx_t iolink_app_master;
 
 void iolink_handler (iolink_m_cfg_t m_cfg);
 
