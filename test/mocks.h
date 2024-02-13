@@ -109,10 +109,10 @@ iolink_error_t mock_DL_Write_Devicemode_req (
    iolink_port_t * port,
    iolink_dl_mode_t devicemode);
 iolink_error_t mock_DL_EventConf_req (iolink_port_t * port);
-iolink_error_t mock_DL_ReadParam_req (iolink_port_t * port, uint8_t address);
+iolink_error_t mock_DL_ReadParam_req (iolink_port_t * port, uint16_t address);
 iolink_error_t mock_DL_WriteParam_req (
    iolink_port_t * port,
-   uint8_t address,
+   uint16_t address,
    uint8_t value);
 iolink_error_t mock_DL_ISDUTransport_req (
    iolink_port_t * port,
@@ -177,7 +177,7 @@ iolink_error_t mock_AL_GetInput_req (
 iolink_error_t mock_AL_NewInput_ind (iolink_port_t * port);
 
 void mock_PL_SetMode_req (iolink_port_t * port, iolink_pl_mode_t mode);
-void mock_iolink_pl_init (iolink_port_t * port, const char * name);
+void mock_iolink_pl_init (iolink_port_t * port, iolink_hw_drv_t * drv, void * arg);
 
 iolink_error_t mock_SM_Operate (iolink_port_t * port);
 

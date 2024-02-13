@@ -49,7 +49,7 @@
  *
  */
 
-const char * iolink_ds_state_literals[] = {
+static const char * const iolink_ds_state_literals[] = {
    "CheckActivationState",
    "WaitingOnDSActivity",
    "Off",
@@ -74,7 +74,7 @@ const char * iolink_ds_state_literals[] = {
    "LAST",
 };
 
-const char * iolink_ds_event_literals[] = {
+static const char * const iolink_ds_event_literals[] = {
    "NONE",        "ENABLE", /* T1 */
    "STARTUP",               /* T2 or T14 */
    "READY",                 /* T25, T26 or T27; + T3 */
@@ -127,17 +127,105 @@ typedef struct iolink_fsm_ds
    iolink_fsm_ds_event_t (
       *action) (iolink_port_t * port, iolink_fsm_ds_event_t event);
 } iolink_fsm_ds_t;
+/**
+ * Trigger DS FSM state transition
+ *
+ * This function triggers a DS state transition according to the event.
+ */
+static void iolink_ds_event (iolink_port_t * port, iolink_fsm_ds_event_t event);
 
-static void ds_AL_Write_cnf (
+/* Actions taken when transitioning to a new state. See iolink_ds_event(). */
+static iolink_fsm_ds_event_t ds_delete (
    iolink_port_t * port,
-   iolink_smi_errortypes_t errortype);
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_todo (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_ul_fault (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_dl_fault (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_fault (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_off (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_chk_id (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_chk_mem_size (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_chk_upload (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_upload (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_chk_validity (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_chk_csum (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_write_param (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_wait_ds_act (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_dl_done (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_readparam (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_store_data (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_ready (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_decompose_set (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_init_dl (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+static iolink_fsm_ds_event_t ds_reinit (
+   iolink_port_t * port,
+   iolink_fsm_ds_event_t event);
+
+/* Callback functions to run on main thread */
+static void ds_read_cnf_cb (iolink_job_t * job);
+static void ds_write_cnf_cb (iolink_job_t * job);
+static void ds_startup_cb (iolink_job_t * job);
+static void ds_delete_cb (iolink_job_t * job);
+static void ds_init_cb (iolink_job_t * job);
+static void ds_upload_cb (iolink_job_t * job);
+
+/* Other functions */
+static bool ds_check_vid_did (iolink_port_t * port);
 static void ds_AL_Read_cnf (
    iolink_port_t * port,
    uint8_t len,
    const uint8_t * data,
    iolink_smi_errortypes_t errortype);
+static void ds_AL_Read_req (
+   iolink_port_t * port,
+   uint16_t index,
+   uint8_t subindex);
+static void ds_AL_Write_ds_cmd_req (
+   iolink_port_t * port,
+   iolink_ds_command_t cmd);
+static void ds_AL_Write_cnf (
+   iolink_port_t * port,
+   iolink_smi_errortypes_t errortype);
 
-static inline void ds_AL_Read_req (
+static void ds_AL_Read_req (
    iolink_port_t * port,
    uint16_t index,
    uint8_t subindex)
@@ -149,7 +237,7 @@ static inline void ds_AL_Read_req (
    AL_Read_req (port, index, subindex, ds_AL_Read_cnf);
 }
 
-static inline void ds_AL_Write_ds_cmd_req (
+static void ds_AL_Write_ds_cmd_req (
    iolink_port_t * port,
    iolink_ds_command_t cmd)
 {
@@ -1142,7 +1230,7 @@ iolink_error_t ds_SMI_ParServToDS_req (
    uint16_t arg_block_len,
    arg_block_t * arg_block)
 {
-   iolink_arg_block_id_t ref_arg_block_id = arg_block->void_block.arg_block_id;
+   iolink_arg_block_id_t ref_arg_block_id = arg_block->id;
    iolink_error_t error;
    iolink_ds_port_t * ds         = iolink_get_ds_ctx (port);
    uint8_t arg_block_ds_data_len = arg_block_len - sizeof (arg_block_ds_data_t);
@@ -1164,7 +1252,7 @@ iolink_error_t ds_SMI_ParServToDS_req (
    }
    else
    {
-      arg_block_ds_data_t * arg_block_ds_data = &arg_block->ds_data;
+      arg_block_ds_data_t * arg_block_ds_data = (arg_block_ds_data_t *)arg_block;
 
       memcpy (ds->master_ds.data, arg_block_ds_data->ds_data, arg_block_ds_data_len);
 

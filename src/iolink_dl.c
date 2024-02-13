@@ -57,7 +57,7 @@
 
 static char dl_thread_names[IOLINK_NUM_PORTS][IOLINK_DL_THREAD_NAME_LENGTH];
 
-static const char * iolink_dl_mh_st_literals[] = {
+static const char * const iolink_dl_mh_st_literals[] = {
    "INACTIVE_0",
    "AW_REPLY_1",
    "STARTUP_2",
@@ -78,11 +78,33 @@ static const char * iolink_dl_mh_st_literals[] = {
    "ERRORHANDLING_17",
 };
 
-static void iolink_dl_pd_h_sm (iolink_port_t * port);
-static void iolink_dl_isdu_h_sm (iolink_port_t * port);
-static void iolink_dl_cmd_h_sm (iolink_port_t * port);
-static void iolink_dl_ev_h_sm (iolink_port_t * port);
-static void iolink_dl_od_h_sm (iolink_port_t * port);
+static uint32_t get_T_initcyc (iolink_dl_t * dl);
+static uint8_t calcCHKPDU (uint8_t * data, uint8_t length);
+static iolink_controlcode_t getCKSPDIn (iolink_dl_t * dl);
+static bool getCKSEvFlag (iolink_dl_t * dl);
+static bool valid_isdu_checksum (iolink_dl_t * dl);
+static iservice_t get_isdu_iserv (iolink_dl_t * dl);
+static uint8_t get_isdu_len (iolink_dl_t * dl);
+static bool get_isdu_total_len (iolink_dl_t * dl, uint8_t * isdu_total_len);
+static bool get_isdu_data_length (iolink_dl_t * dl, uint8_t * isdu_data_length);
+static uint8_t * get_isdu_response_data (iolink_dl_t * dl);
+static uint8_t get_isdu_total_segments (iolink_dl_t * dl);
+static bool valid_isdu_header (iolink_dl_t * dl);
+static void start_timer_initcyc (iolink_dl_t * dl);
+static void isdu_timer_reset (iolink_dl_t * dl);
+static void isdu_timer_start (iolink_dl_t * dl);
+static bool isdu_timer_elapsed (iolink_dl_t * dl);
+static void interleave_reset_od_sizes (iolink_dl_t * dl);
+static void set_mseq_change (iolink_dl_t * dl);
+static void CH_Conf (iolink_port_t * port, CHCmd_t cmd);
+static void OH_Conf (iolink_port_t * port, OHCmd_t cmd);
+static void PH_Conf (iolink_port_t * port, PHCmd_t cmd);
+static void IH_Conf (iolink_port_t * port, IHCmd_t cmd);
+static void EH_Conf (iolink_port_t * port, EHCmd_t cmd);
+static void MH_Conf (iolink_port_t * port, MHCmd_t cmd);
+static void set_OH_IH_EH_Conf_active (iolink_port_t * port, bool active);
+static void write_master_command (iolink_port_t * port, iolink_status_t errorinfo);
+static void iolink_dl_mh_handle_com_lost (iolink_port_t * port);
 static iolink_error_t OD_req (
    iolink_dl_t * dl,
    iolink_rwdirection_t rwdirection,
@@ -107,8 +129,89 @@ static iolink_error_t PDInStatus_ind (
    iolink_controlcode_t status);
 static iolink_error_t EventFlag_ind (iolink_dl_t * dl, bool eventflag);
 static iolink_error_t MHInfo_ind (iolink_dl_t * dl, iolink_mhinfo_t mhinfo);
+static iolink_error_t DL_ReadWriteParam_req (
+   iolink_port_t * port,
+   uint16_t address,
+   uint8_t value,
+   bool write);
+static void dl_timer_timeout (os_timer_t * timer, void * arg);
+static void dl_timer_tcyc_timeout (os_timer_t * timer, void * arg);
+static void iolink_dl_wurq_recv (iolink_port_t * port);
+static void iolink_dl_handle_error (iolink_port_t * port);
+static void dl_main (void * arg);
 
-static inline uint32_t get_T_initcyc (iolink_dl_t * dl)
+/* State machine of the Master DL-mode handler */
+static void iolink_dl_mode_h_sm (iolink_port_t * port);
+static void iolink_dl_mode_h_sm_idle0 (iolink_port_t * port);
+static void iolink_dl_mode_h_sm_establish_com1 (void);
+static void iolink_dl_mode_h_sm_startup2 (iolink_port_t * port);
+static void iolink_dl_mode_h_sm_preoperate3 (iolink_port_t * port);
+static void iolink_dl_mode_h_sm_operate4 (iolink_port_t * port);
+static void iolink_dl_mode_h_sm_goto_idle (
+   iolink_port_t * port,
+   iolink_mhmode_t mode);
+static void iolink_dl_mode_h_sm_goto_startup (iolink_port_t * port);
+static void iolink_dl_mode_h_sm_goto_operate (iolink_port_t * port);
+
+/* State machine of the Master message handler */
+static void iolink_dl_message_h_sm (iolink_port_t * port);
+static void iolink_dl_message_h_sm_inactive0 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_await_reply1 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_startup2 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_response3 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_await_reply4 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_error_handling5 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_preoperate6 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_get_od7 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_response8 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_await_reply9 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_error_handling10 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_check_handler11 (void);
+static void iolink_dl_message_h_sm_operate12 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_get_pd13 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_get_od14 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_response15 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_await_reply16 (iolink_port_t * port);
+static void iolink_dl_message_h_sm_error_handling17 (iolink_port_t * port);
+
+/* State machine of the Master Process Data handler */
+static void iolink_dl_pd_h_sm (iolink_port_t * port);
+static void iolink_dl_pd_h_sm_inactive0 (iolink_port_t * port);
+static void iolink_dl_pd_h_sm_pd_single1 (iolink_port_t * port);
+static void iolink_dl_pd_h_sm_pd_in_interleave2 (iolink_port_t * port);
+static void iolink_dl_pd_h_sm_pd_out_interleave3 (iolink_port_t * port);
+
+/* State machine of the Master On-request Data handler */
+static void iolink_dl_od_h_sm (iolink_port_t * port);
+static void iolink_dl_od_h_sm_inactive0 (iolink_port_t * port);
+static void iolink_dl_od_h_sm_isdu1 (iolink_port_t * port);
+static void iolink_dl_od_h_sm_command2 (iolink_port_t * port);
+static void iolink_dl_od_h_sm_event3 (iolink_port_t * port);
+
+/* State machine of the Master ISDU handler */
+static void iolink_dl_isdu_h_sm (iolink_port_t * port);
+static void iolink_dl_isdu_h_sm_inactive0 (iolink_port_t * port);
+static void iolink_dl_isdu_h_sm_idle1 (iolink_port_t * port);
+static void iolink_dl_isdu_h_sm_isdu_request2 (iolink_port_t * port);
+static void iolink_dl_isdu_h_sm_isdu_wait3 (iolink_port_t * port);
+static void iolink_dl_isdu_h_sm_isdu_error4 (iolink_port_t * port);
+static void iolink_dl_isdu_h_sm_isdu_response5 (iolink_port_t * port);
+static void iolink_dl_isdu_h_sm_enter_isduerror4 (iolink_port_t * port);
+static void iolink_dl_isdu_h_sm_reception_complete (iolink_port_t * port);
+
+/* State machine of the Master command handler */
+static void iolink_dl_cmd_h_sm (iolink_port_t * port);
+
+/* State machine of the Master Event handler */
+static void iolink_dl_ev_h_sm (iolink_port_t * port);
+static void iolink_dl_ev_h_sm_inactive0 (iolink_port_t * port);
+static void iolink_dl_ev_h_sm_idle1 (iolink_port_t * port);
+static void iolink_dl_ev_h_sm_read_event2 (iolink_port_t * port);
+static void iolink_dl_ev_h_sm_read_event2_for_device_status_code (iolink_port_t * port);
+static void iolink_dl_ev_h_sm_read_event2_for_device_event_memory_byte (iolink_port_t * port);
+static void iolink_dl_ev_h_sm_signal_event3 (iolink_port_t * port);
+
+static uint32_t get_T_initcyc (iolink_dl_t * dl)
 {
    uint32_t us = 0;
 
@@ -130,7 +233,7 @@ static inline uint32_t get_T_initcyc (iolink_dl_t * dl)
    return (us / 1000) + 1;
 }
 
-static inline uint8_t calcCHKPDU (uint8_t * data, uint8_t length)
+static uint8_t calcCHKPDU (uint8_t * data, uint8_t length)
 {
    uint8_t idx, chksum = 0;
 
@@ -147,35 +250,35 @@ static inline uint8_t calcCHKPDU (uint8_t * data, uint8_t length)
    return chksum;
 }
 
-static inline iolink_controlcode_t getCKSPDIn (iolink_dl_t * dl)
+static iolink_controlcode_t getCKSPDIn (iolink_dl_t * dl)
 {
    return ((dl->message_handler.cks & BIT (6)) != 0) ? IOLINK_CONTROLCODE_INVALID
                                                      : IOLINK_CONTROLCODE_VALID;
 }
 
-static inline bool getCKSEvFlag (iolink_dl_t * dl)
+static bool getCKSEvFlag (iolink_dl_t * dl)
 {
    return ((dl->message_handler.cks & BIT (7)) != 0);
 }
 
-static inline bool valid_isdu_checksum (iolink_dl_t * dl)
+static bool valid_isdu_checksum (iolink_dl_t * dl)
 {
    return (
       calcCHKPDU (dl->isdu_handler.isdu_data, dl->isdu_handler.total_isdu_len) ==
       0);
 }
 
-static inline iservice_t get_isdu_iserv (iolink_dl_t * dl)
+static iservice_t get_isdu_iserv (iolink_dl_t * dl)
 {
    return ((dl->isdu_handler.isdu_data[0] >> 4) & 0x0F);
 }
 
-static inline uint8_t get_isdu_len (iolink_dl_t * dl)
+static uint8_t get_isdu_len (iolink_dl_t * dl)
 {
    return (dl->isdu_handler.isdu_data[0] & 0x0F);
 }
 
-static inline bool get_isdu_total_len (iolink_dl_t * dl, uint8_t * isdu_total_len)
+static bool get_isdu_total_len (iolink_dl_t * dl, uint8_t * isdu_total_len)
 {
    uint8_t len = get_isdu_len (dl);
 
@@ -194,7 +297,7 @@ static inline bool get_isdu_total_len (iolink_dl_t * dl, uint8_t * isdu_total_le
    return true;
 }
 
-static inline bool get_isdu_data_length (iolink_dl_t * dl, uint8_t * isdu_data_length)
+static bool get_isdu_data_length (iolink_dl_t * dl, uint8_t * isdu_data_length)
 {
    uint8_t ohlen = 2;
    uint8_t isdu_tot_len;
@@ -214,20 +317,20 @@ static inline bool get_isdu_data_length (iolink_dl_t * dl, uint8_t * isdu_data_l
    return true;
 }
 
-static inline uint8_t * get_isdu_response_data (iolink_dl_t * dl)
+static uint8_t * get_isdu_response_data (iolink_dl_t * dl)
 {
    uint8_t offset = (get_isdu_len (dl) == 1) ? 2 : 1;
 
    return &dl->isdu_handler.isdu_data[offset];
 }
 
-static inline uint8_t get_isdu_total_segments (iolink_dl_t * dl)
+static uint8_t get_isdu_total_segments (iolink_dl_t * dl)
 {
    return (dl->isdu_handler.total_isdu_len + dl->message_handler.od_len - 1) /
           dl->message_handler.od_len;
 }
 
-static inline bool valid_isdu_header (iolink_dl_t * dl)
+static bool valid_isdu_header (iolink_dl_t * dl)
 {
    iservice_t iserv = get_isdu_iserv (dl);
    uint8_t len      = get_isdu_len (dl);
@@ -263,7 +366,7 @@ static inline bool valid_isdu_header (iolink_dl_t * dl)
    return result;
 }
 
-static inline void start_timer_initcyc (iolink_dl_t * dl)
+static void start_timer_initcyc (iolink_dl_t * dl)
 {
    uint32_t timer_val = get_T_initcyc (dl);
    os_timer_stop (dl->timer);
@@ -286,12 +389,12 @@ static inline void start_timer_initcyc (iolink_dl_t * dl)
    dl->timer_type = IOL_DL_TIMER_TINITCYC_MH;
 }
 
-static inline void isdu_timer_reset (iolink_dl_t * dl)
+static void isdu_timer_reset (iolink_dl_t * dl)
 {
    dl->isdu_handler.isdu_timer = 0;
 }
 
-static inline void isdu_timer_start (iolink_dl_t * dl)
+static void isdu_timer_start (iolink_dl_t * dl)
 {
    dl->isdu_handler.isdu_timer = os_get_current_time_us();
 
@@ -302,7 +405,7 @@ static inline void isdu_timer_start (iolink_dl_t * dl)
    }
 }
 
-static inline bool isdu_timer_elapsed (iolink_dl_t * dl)
+static bool isdu_timer_elapsed (iolink_dl_t * dl)
 {
    return (
       ((os_get_current_time_us() - dl->isdu_handler.isdu_timer) >
@@ -310,13 +413,13 @@ static inline bool isdu_timer_elapsed (iolink_dl_t * dl)
       (dl->isdu_handler.isdu_timer != 0));
 }
 
-static inline void interleave_reset_od_sizes (iolink_dl_t * dl)
+static void interleave_reset_od_sizes (iolink_dl_t * dl)
 {
    dl->od_handler.od_rxlen = 0;
    dl->od_handler.od_txlen = 0;
 }
 
-static inline void set_mseq_change (iolink_dl_t * dl)
+static void set_mseq_change (iolink_dl_t * dl)
 {
    if (dl->message_handler.interleave != IOL_DL_INTERLEAVE_NONE)
    {
@@ -351,7 +454,7 @@ static inline void set_mseq_change (iolink_dl_t * dl)
    memset (dl->txbuffer, 0, IOLINK_RXTX_BUFFER_SIZE);
 }
 
-static inline void CH_Conf (iolink_port_t * port, CHCmd_t cmd)
+static void CH_Conf (iolink_port_t * port, CHCmd_t cmd)
 {
    iolink_dl_t * dl = iolink_get_dl_ctx (port);
 
@@ -359,7 +462,7 @@ static inline void CH_Conf (iolink_port_t * port, CHCmd_t cmd)
    iolink_dl_cmd_h_sm (port);
 }
 
-static inline void OH_Conf (iolink_port_t * port, OHCmd_t cmd)
+static void OH_Conf (iolink_port_t * port, OHCmd_t cmd)
 {
    iolink_dl_t * dl = iolink_get_dl_ctx (port);
 
@@ -367,7 +470,7 @@ static inline void OH_Conf (iolink_port_t * port, OHCmd_t cmd)
    iolink_dl_od_h_sm (port);
 }
 
-static inline void PH_Conf (iolink_port_t * port, PHCmd_t cmd)
+static void PH_Conf (iolink_port_t * port, PHCmd_t cmd)
 {
    iolink_dl_t * dl = iolink_get_dl_ctx (port);
 
@@ -380,7 +483,7 @@ static inline void PH_Conf (iolink_port_t * port, PHCmd_t cmd)
    iolink_dl_pd_h_sm (port);
 }
 
-static inline void IH_Conf (iolink_port_t * port, IHCmd_t cmd)
+static void IH_Conf (iolink_port_t * port, IHCmd_t cmd)
 {
    iolink_dl_t * dl = iolink_get_dl_ctx (port);
 
@@ -388,7 +491,7 @@ static inline void IH_Conf (iolink_port_t * port, IHCmd_t cmd)
    iolink_dl_isdu_h_sm (port);
 }
 
-static inline void EH_Conf (iolink_port_t * port, EHCmd_t cmd)
+static void EH_Conf (iolink_port_t * port, EHCmd_t cmd)
 {
    iolink_dl_t * dl = iolink_get_dl_ctx (port);
 
@@ -396,12 +499,15 @@ static inline void EH_Conf (iolink_port_t * port, EHCmd_t cmd)
    iolink_dl_ev_h_sm (port);
 }
 
-static inline void MH_Conf (iolink_dl_t * dl, MHCmd_t cmd)
+static void MH_Conf (iolink_port_t * port, MHCmd_t cmd)
 {
+   iolink_dl_t * dl = iolink_get_dl_ctx(port);
+
    dl->message_handler.mhcmd = cmd;
+   iolink_dl_message_h_sm(port);
 }
 
-static inline void iolink_dl_mode_h_sm_goto_operate (iolink_port_t * port)
+static void iolink_dl_mode_h_sm_goto_operate (iolink_port_t * port)
 {
    iolink_dl_t * dl = iolink_get_dl_ctx (port);
 
@@ -414,10 +520,9 @@ static inline void iolink_dl_mode_h_sm_goto_operate (iolink_port_t * port)
       PH_Conf (port, IOL_PHCMD_INTERLEAVE);
    }
 
-   MH_Conf (dl, IOL_MHCMD_OPERATE);
-   DL_Mode_ind (port, IOLINK_MHMODE_OPERATE);
-   os_event_set (dl->event, IOLINK_DL_EVENT_MH);
+   MH_Conf (port, IOL_MHCMD_OPERATE);
    dl->mode_handler.state = IOL_DL_MDH_ST_OPERATE_4;
+   DL_Mode_ind (port, IOLINK_MHMODE_OPERATE);
 }
 
 static void set_OH_IH_EH_Conf_active (iolink_port_t * port, bool active)
@@ -427,7 +532,7 @@ static void set_OH_IH_EH_Conf_active (iolink_port_t * port, bool active)
    EH_Conf (port, (active) ? IOL_EHCMD_ACTIVE : IOL_EHCMD_INACTIVE);
 }
 
-static inline void iolink_dl_mode_h_sm_goto_idle (
+static void iolink_dl_mode_h_sm_goto_idle (
    iolink_port_t * port,
    iolink_mhmode_t mode)
 {
@@ -435,22 +540,157 @@ static inline void iolink_dl_mode_h_sm_goto_idle (
 
    set_OH_IH_EH_Conf_active (port, false);
    CH_Conf (port, IOL_CHCMD_INACTIVE);
-   MH_Conf (dl, IOL_MHCMD_INACTIVE);
-   DL_Mode_ind (port, mode);
-   os_event_set (dl->event, IOLINK_DL_EVENT_MH);
+   MH_Conf (port, IOL_MHCMD_INACTIVE);
    dl->mode_handler.mhinfo = IOLINK_MHINFO_NONE;
    dl->mode_handler.state  = IOL_DL_MDH_ST_IDLE_0;
+   DL_Mode_ind (port, mode);
 }
 
-static inline void iolink_dl_mode_h_sm_goto_startup (iolink_port_t * port)
+static void iolink_dl_mode_h_sm_goto_startup (iolink_port_t * port)
 {
    iolink_dl_t * dl = iolink_get_dl_ctx (port);
 
    set_OH_IH_EH_Conf_active (port, false);
-   MH_Conf (dl, IOL_MHCMD_STARTUP);
-   DL_Mode_ind (port, IOLINK_MHMODE_STARTUP);
-   os_event_set (dl->event, IOLINK_DL_EVENT_MH);
+   MH_Conf (port, IOL_MHCMD_STARTUP);
    dl->mode_handler.state = IOL_DL_MDH_ST_STARTUP_2;
+   DL_Mode_ind (port, IOLINK_MHMODE_STARTUP);
+}
+
+static void iolink_dl_mode_h_sm_idle0 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->mode_handler.dl_mode == IOLINK_DLMODE_STARTUP) // T1
+   {
+#if IOLINK_HW == IOLINK_HW_MAX14819
+      // T15, T16, T17, T18, T19
+      if (iolink_pl_init_sdci (port))
+      {
+         dl->mode_handler.state = IOL_DL_MDH_ST_ESTCOM_1;
+      }
+      else
+      {
+         // TODO FIXME: handle this!
+         LOG_WARNING (
+            IOLINK_DL_LOG,
+            "%s (%u): Unable to start SDCI\n",
+            __func__,
+            iolink_get_portnumber (port));
+      }
+#endif
+   }
+   else if (dl->mode_handler.dl_mode != IOLINK_DLMODE_INACTIVE)
+   {
+      LOG_WARNING (
+         IOLINK_DL_LOG,
+         "%s: IDLE_0: Unknown event triggered. Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_mode_h_sm_establish_com1 (void)
+{
+#if IOLINK_HW == IOLINK_HW_MAX14819
+   // Substate machine handled by max14819
+#endif
+}
+
+static void iolink_dl_mode_h_sm_startup2 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   // TODO: Get ID from device
+   if (dl->mode_handler.dl_mode == IOLINK_DLMODE_PREOPERATE) // T3
+   {
+      set_OH_IH_EH_Conf_active (port, true);
+      MH_Conf (port, IOL_MHCMD_PREOPERATE);
+      dl->mode_handler.state = IOL_DL_MDH_ST_PREOPERATE_3;
+      DL_Mode_ind (port, IOLINK_MHMODE_PREOPERATE);
+   }
+   else if (dl->mode_handler.dl_mode == IOLINK_DLMODE_OPERATE) // T5
+   {
+      set_OH_IH_EH_Conf_active (port, true);
+      iolink_dl_mode_h_sm_goto_operate (port);
+   }
+   else if (dl->mode_handler.dl_mode == IOLINK_DLMODE_INACTIVE) // Not in
+                                                                  // spec.
+   {
+      iolink_dl_mode_h_sm_goto_idle (port, IOLINK_MHMODE_INACTIVE);
+   }
+   else if (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST) // Not in spec.
+   {
+      iolink_dl_mode_h_sm_goto_idle (port, IOLINK_MHMODE_COMLOST);
+   }
+   else
+   {
+      LOG_WARNING (
+         IOLINK_DL_LOG,
+         "%s: STARTUP_2: Unknown event triggered. Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_mode_h_sm_preoperate3 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->mode_handler.dl_mode == IOLINK_DLMODE_STARTUP) // T6
+   {
+      CH_Conf (port, IOL_CHCMD_INACTIVE);
+      iolink_dl_mode_h_sm_goto_startup (port);
+   }
+   else if (dl->mode_handler.dl_mode == IOLINK_DLMODE_INACTIVE) // SDCI_TC_0214
+   {
+      MH_Conf (port, IOL_MHCMD_OPERATE);
+   }
+   else if (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST) // T9
+   {
+      iolink_dl_mode_h_sm_goto_idle (port, IOLINK_MHMODE_COMLOST);
+   }
+   else if (dl->mode_handler.dl_mode == IOLINK_DLMODE_OPERATE) // T10      {
+   {
+      iolink_dl_mode_h_sm_goto_operate (port);
+   }
+   else
+   {
+      LOG_WARNING (
+         IOLINK_DL_LOG,
+         "%s: PREOPERATE_3: Unknown event triggered. Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_mode_h_sm_operate4 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->mode_handler.dl_mode == IOLINK_DLMODE_STARTUP) // T12
+   {
+      PH_Conf (port, IOL_PHCMD_INACTIVE);
+      iolink_dl_mode_h_sm_goto_startup (port);
+   }
+   else if (
+      (dl->mode_handler.dl_mode == IOLINK_DLMODE_INACTIVE) || // T13
+      (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST))     // T14
+   {
+      PH_Conf (port, IOL_PHCMD_INACTIVE);
+      iolink_dl_mode_h_sm_goto_idle (
+         port,
+         (dl->mode_handler.dl_mode == IOLINK_DLMODE_INACTIVE)
+            ? IOLINK_MHMODE_INACTIVE
+            : IOLINK_MHMODE_COMLOST);
+   }
+   else if (dl->mode_handler.dl_mode != IOLINK_DLMODE_OPERATE)
+   {
+      LOG_WARNING (
+         IOLINK_DL_LOG,
+         "%s: OPERATE_4: Unknown event triggered. Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
 }
 
 static void iolink_dl_mode_h_sm (iolink_port_t * port)
@@ -460,125 +700,27 @@ static void iolink_dl_mode_h_sm (iolink_port_t * port)
    switch (dl->mode_handler.state)
    {
    case IOL_DL_MDH_ST_IDLE_0:
-      if (dl->mode_handler.dl_mode == IOLINK_DLMODE_STARTUP) // T1
-      {
-#if IOLINK_HW == IOLINK_HW_MAX14819
-         // T15, T16, T17, T18, T19
-         if (iolink_pl_init_sdci (port))
-         {
-            dl->mode_handler.state = IOL_DL_MDH_ST_ESTCOM_1;
-         }
-         else
-         {
-            // TODO FIXME: handle this!
-            LOG_WARNING (
-               IOLINK_DL_LOG,
-               "%s (%u): Already waiting for init on the other port\n",
-               __func__,
-               iolink_get_portnumber (port));
-         }
-#endif
-      }
-      else if (dl->mode_handler.dl_mode != IOLINK_DLMODE_INACTIVE)
-      {
-         LOG_WARNING (
-            IOLINK_DL_LOG,
-            "%s: IDLE_0: Unknown event triggered. Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_mode_h_sm_idle0 (port);
       break;
    case IOL_DL_MDH_ST_ESTCOM_1:
-#if IOLINK_HW == IOLINK_HW_MAX14819
-      // Substate machine handled by max14819
-#endif
+      iolink_dl_mode_h_sm_establish_com1 ();
       break;
    case IOL_DL_MDH_ST_STARTUP_2:
-      // TODO: Get ID from device
-      if (dl->mode_handler.dl_mode == IOLINK_DLMODE_PREOPERATE) // T3
-      {
-         set_OH_IH_EH_Conf_active (port, true);
-         MH_Conf (dl, IOL_MHCMD_PREOPERATE);
-         DL_Mode_ind (port, IOLINK_MHMODE_PREOPERATE);
-         os_event_set (dl->event, IOLINK_DL_EVENT_MH);
-         dl->mode_handler.state = IOL_DL_MDH_ST_PREOPERATE_3;
-      }
-      else if (dl->mode_handler.dl_mode == IOLINK_DLMODE_OPERATE) // T5
-      {
-         set_OH_IH_EH_Conf_active (port, true);
-         iolink_dl_mode_h_sm_goto_operate (port);
-      }
-      else if (dl->mode_handler.dl_mode == IOLINK_DLMODE_INACTIVE) // Not in
-                                                                   // spec.
-      {
-         iolink_dl_mode_h_sm_goto_idle (port, IOLINK_MHMODE_INACTIVE);
-      }
-      else if (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST) // Not in spec.
-      {
-         iolink_dl_mode_h_sm_goto_idle (port, IOLINK_MHMODE_COMLOST);
-      }
-      else
-      {
-         LOG_WARNING (
-            IOLINK_DL_LOG,
-            "%s: STARTUP_2: Unknown event triggered. Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_mode_h_sm_startup2 (port);
       break;
    case IOL_DL_MDH_ST_PREOPERATE_3:
-      if (dl->mode_handler.dl_mode == IOLINK_DLMODE_STARTUP) // T6
-      {
-         CH_Conf (port, IOL_CHCMD_INACTIVE);
-         iolink_dl_mode_h_sm_goto_startup (port);
-      }
-      else if (dl->mode_handler.dl_mode == IOLINK_DLMODE_INACTIVE) // SDCI_TC_0214
-      {
-         MH_Conf (dl, IOL_MHCMD_OPERATE);
-         os_event_set (dl->event, IOLINK_DL_EVENT_MH);
-      }
-      else if (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST) // T9
-      {
-         iolink_dl_mode_h_sm_goto_idle (port, IOLINK_MHMODE_COMLOST);
-      }
-      else if (dl->mode_handler.dl_mode == IOLINK_DLMODE_OPERATE) // T10      {
-      {
-         iolink_dl_mode_h_sm_goto_operate (port);
-      }
-      else
-      {
-         LOG_WARNING (
-            IOLINK_DL_LOG,
-            "%s: PREOPERATE_3: Unknown event triggered. Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_mode_h_sm_preoperate3 (port);
       break;
    case IOL_DL_MDH_ST_OPERATE_4:
-      if (dl->mode_handler.dl_mode == IOLINK_DLMODE_STARTUP) // T12
-      {
-         PH_Conf (port, IOL_PHCMD_INACTIVE);
-         iolink_dl_mode_h_sm_goto_startup (port);
-      }
-      else if (
-         (dl->mode_handler.dl_mode == IOLINK_DLMODE_INACTIVE) || // T13
-         (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST))     // T14
-      {
-         PH_Conf (port, IOL_PHCMD_INACTIVE);
-         iolink_dl_mode_h_sm_goto_idle (
-            port,
-            (dl->mode_handler.dl_mode == IOLINK_DLMODE_INACTIVE)
-               ? IOLINK_MHMODE_INACTIVE
-               : IOLINK_MHMODE_COMLOST);
-      }
-      else if (dl->mode_handler.dl_mode != IOLINK_DLMODE_OPERATE)
-      {
-         LOG_WARNING (
-            IOLINK_DL_LOG,
-            "%s: OPERATE_4: Unknown event triggered. Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_mode_h_sm_operate4 (port);
+      break;
+   default:
+      /* This should never happen */
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: Invalid state: %d:\n",
+         __func__,
+         dl->mode_handler.state);
       break;
    }
 }
@@ -625,6 +767,599 @@ static void iolink_dl_mh_handle_com_lost (iolink_port_t * port)
    os_event_set (dl->event, IOLINK_DL_EVENT_MDH);
 }
 
+static void iolink_dl_message_h_sm_inactive0 (iolink_port_t * port)
+{
+#if IOLINK_HW == IOLINK_HW_MAX14819
+   PL_DisableCycleTimer (port);
+#endif
+}
+
+static void iolink_dl_message_h_sm_await_reply1 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+#if IOLINK_HW == IOLINK_HW_MAX14819
+   if (dl->baudrate != IOLINK_BAUDRATE_NONE) // T2
+   {
+      dl->message_handler.state = IOL_DL_MH_ST_STARTUP_2;
+      DL_Read_cnf (port, dl->cycbyte, IOLINK_STATUS_NO_ERROR);
+      dl->tinitcyc = 0;
+   }
+   else // T3
+   {
+      dl->message_handler.state = IOL_DL_MH_ST_INACTIVE_0;
+   }
+#endif
+}
+
+static void iolink_dl_message_h_sm_startup2 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   if (dl->message_handler.mhcmd == IOL_MHCMD_PREOPERATE) // T12
+   {
+      set_mseq_change (dl);
+      dl->message_handler.state = IOL_DL_MH_ST_PREOPERATE_6;
+   }
+   else if (dl->message_handler.mhcmd == IOL_MHCMD_OPERATE) // T39
+   {
+      start_timer_initcyc (dl);
+      set_mseq_change (dl);
+      dl->message_handler.state = IOL_DL_MH_ST_OPERATE_12;
+   }
+   else if (
+      (dl->message_handler.rwcmd == IOL_MHRW_READ) ||
+      (dl->message_handler.rwcmd == IOL_MHRW_WRITE))
+   {
+      dl->message_handler.retry = 0;
+      dl->dataready             = false;
+#if IOLINK_HW == IOLINK_HW_MAX14819
+      if (dl->tinitcyc++ < 4)
+      {
+         os_usleep ((get_T_initcyc (dl) + 4000) / 2);
+      }
+      PL_Transfer_req (
+         port,
+         dl->od_handler.od_rxlen + 1, // T5, T6
+         dl->od_handler.od_txlen + 2,
+         dl->txbuffer);
+#endif
+      dl->message_handler.state = IOL_DL_MH_ST_RESPONSE_3;
+   }
+   else if (dl->message_handler.mhcmd != IOL_MHCMD_INACTIVE)
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: %s: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_dl_mh_st_literals[dl->message_handler.state],
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_message_h_sm_response3 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_4;
+   iolink_dl_message_h_sm_await_reply4 (port);
+}
+
+static void iolink_dl_message_h_sm_await_reply4 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   if (dl->dataready) // T10
+   {
+      dl->message_handler.state = IOL_DL_MH_ST_STARTUP_2;
+
+      if (dl->message_handler.rwcmd == IOL_MHRW_READ)
+      {
+         dl->message_handler.rwcmd = IOL_MHRW_NONE;
+         DL_Read_cnf (port, dl->rxbuffer[0], IOLINK_STATUS_NO_ERROR);
+      }
+      else if (dl->message_handler.rwcmd == IOL_MHRW_WRITE)
+      {
+         dl->message_handler.rwcmd = IOL_MHRW_NONE;
+         DL_Write_cnf (port, IOLINK_STATUS_NO_ERROR);
+      }
+   }
+   else if (
+      (dl->rxtimeout) || // T7
+      (dl->rxerror))     // T8
+   {
+      start_timer_initcyc (dl);
+      dl->message_handler.state = IOL_DL_MH_ST_ERRORHANDLING_5;
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: %s: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_dl_mh_st_literals[dl->message_handler.state],
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_message_h_sm_error_handling5 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   if (dl->message_handler.retry >= IOLINK_MAX_RETRY) // T11
+   {
+      dl->timer_type = IOL_DL_TIMER_NONE;
+      MHInfo_ind (dl, IOLINK_MHINFO_COMLOST);
+      dl->message_handler.state = IOL_DL_MH_ST_INACTIVE_0;
+      os_event_set (dl->event, IOLINK_DL_EVENT_MDH);
+
+      if (dl->message_handler.rwcmd == IOL_MHRW_READ)
+      {
+         dl->message_handler.rwcmd = IOL_MHRW_NONE;
+         DL_Read_cnf (port, 0, IOLINK_STATUS_NO_COMM);
+      }
+      else if (dl->message_handler.rwcmd == IOL_MHRW_WRITE)
+      {
+         dl->message_handler.rwcmd = IOL_MHRW_NONE;
+         DL_Write_cnf (port, IOLINK_STATUS_NO_COMM);
+      }
+   }
+   else if (dl->timer_elapsed && (dl->timer_type == IOL_DL_TIMER_TINITCYC_MH)) // T9
+   {
+#if IOLINK_HW == IOLINK_HW_MAX14819
+      PL_Resend (port);
+#endif
+      dl->message_handler.retry++;
+      dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_4;
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: %s: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_dl_mh_st_literals[dl->message_handler.state],
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_message_h_sm_preoperate6 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   if (dl->message_handler.mhcmd == IOL_MHCMD_OPERATE) // T26
+   {
+      start_timer_initcyc (dl);
+      set_mseq_change (dl);
+      dl->message_handler.state = IOL_DL_MH_ST_OPERATE_12;
+   }
+   else if (dl->message_handler.mhcmd == IOL_MHCMD_STARTUP) // T37
+   {
+      set_mseq_change (dl);
+      dl->message_handler.state = IOL_DL_MH_ST_STARTUP_2;
+   }
+   else if (dl->message_handler.mhcmd == IOL_MHCMD_INACTIVE) // T36
+   {
+      MHInfo_ind (dl, IOLINK_MHINFO_COMLOST);
+      os_event_set (dl->event, IOLINK_DL_EVENT_MDH);
+#if IOLINK_HW == IOLINK_HW_MAX14819
+      PL_Transfer_req (
+         port,
+         dl->od_handler.od_rxlen + 1,
+         dl->od_handler.od_txlen + 2,
+         dl->txbuffer);
+#endif
+      dl->message_handler.state = IOL_DL_MH_ST_INACTIVE_0;
+   }
+   else if (
+      (dl->message_handler.rwcmd == IOL_MHRW_READPARAM) ||
+      (dl->message_handler.rwcmd == IOL_MHRW_WRITEPARAM) ||
+      (dl->message_handler.rwcmd == IOL_MHRW_ISDUTRANSPORT) ||
+      (dl->cmd_handler.master_command == IOL_MASTERCMD_DEVICE_OPERATE) ||
+      dl->event_handler.event_flag)
+   {
+      dl->message_handler.retry = 0;
+      // OD_Trig
+      dl->od_handler.trigger    = IOL_TRIGGERED_MASTER_MESSAGE;
+      dl->message_handler.state = IOL_DL_MH_ST_GETOD_7; // T13, T14, T15,
+                                                         // T17, T16
+      start_timer_initcyc (dl);
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: %s: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_dl_mh_st_literals[dl->message_handler.state],
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_message_h_sm_get_od7 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   iolink_dl_od_h_sm (port);
+   dl->message_handler.retry = 0;
+   dl->dataready             = false;
+   // start_timer_initcyc(dl);
+#if IOLINK_HW == IOLINK_HW_MAX14819
+   PL_Transfer_req (
+      port,
+      dl->od_handler.od_rxlen + 1,
+      dl->od_handler.od_txlen + 2,
+      dl->txbuffer);
+   LOG_DEBUG (IOLINK_DL_LOG, "%s: Message sent (PreOp)\n", __func__);
+   dl->message_handler.state = IOL_DL_MH_ST_RESPONSE_8; // T18
+#endif
+}
+
+static void iolink_dl_message_h_sm_response8 (iolink_port_t * port)
+{
+   iolink_dl_message_h_sm_await_reply9 (port);
+}
+
+static void iolink_dl_message_h_sm_await_reply9 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   if (dl->dataready)
+   {
+      // ODTrig
+      dl->od_handler.trigger = IOL_TRIGGERED_DEVICE_MESSAGE;
+      EventFlag_ind (dl, getCKSEvFlag (dl));
+      iolink_dl_od_h_sm (port);
+
+      if (dl->isdu_handler.state == IOL_DL_ISDUH_ST_IDLE_1)
+      {
+         if (dl->message_handler.mhcmd == IOL_MHCMD_OPERATE)
+         {
+            start_timer_initcyc (dl);
+            dl->message_handler.state =
+               IOL_DL_MH_ST_AW_REPLY_16; // SDCI_TC_0196
+         }
+         else if (!dl->event_handler.event_flag)
+         {
+            os_timer_stop (dl->timer);
+            dl->message_handler.state = IOL_DL_MH_ST_PREOPERATE_6; // T23,
+                                                                     // T25
+         }
+      }
+      else
+      {
+         start_timer_initcyc (dl);
+         dl->od_handler.trigger    = IOL_TRIGGERED_MASTER_MESSAGE;
+         dl->message_handler.state = IOL_DL_MH_ST_GETOD_7; // T23, T24
+      }
+   }
+   else if (
+      dl->rxtimeout || // T19
+      dl->rxerror)     // T20
+   {
+      start_timer_initcyc (dl);
+      dl->rxtimeout             = false;
+      dl->rxerror               = false;
+      dl->message_handler.state = IOL_DL_MH_ST_ERRORHANDLING_10;
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: %s: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_dl_mh_st_literals[dl->message_handler.state],
+         iolink_get_portnumber (port));
+      dl->cqerr  = 0;
+      dl->devdly = 0;
+      iolink_pl_get_error (port, &dl->cqerr, &dl->devdly);
+   }
+}
+
+static void iolink_dl_message_h_sm_error_handling10 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   if (dl->message_handler.retry >= IOLINK_MAX_RETRY) // T22
+   {
+      write_master_command (port, IOLINK_STATUS_NO_COMM);
+
+      switch (dl->message_handler.rwcmd)
+      {
+      case IOL_MHRW_READ:
+         DL_Read_cnf (port, 0, IOLINK_STATUS_NO_COMM);
+         break;
+      case IOL_MHRW_WRITE:
+         DL_Write_cnf (port, IOLINK_STATUS_NO_COMM);
+         break;
+      case IOL_MHRW_READPARAM:
+         DL_ReadParam_cnf (port, 0, IOLINK_STATUS_NO_COMM);
+         break;
+      case IOL_MHRW_WRITEPARAM:
+         DL_WriteParam_cnf (port, IOLINK_STATUS_NO_COMM);
+         break;
+      default:
+         break;
+      }
+
+      iolink_dl_mh_handle_com_lost (port);
+   }
+   else if (dl->timer_elapsed && (dl->timer_type == IOL_DL_TIMER_TINITCYC_MH)) // T9
+   {
+#if IOLINK_HW == IOLINK_HW_MAX14819
+      PL_Resend (port);
+#endif
+      dl->message_handler.retry++;
+      dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_9; // T21
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: %s: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_dl_mh_st_literals[dl->message_handler.state],
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_message_h_sm_check_handler11 (void)
+{
+   // Empty state
+}
+
+static void iolink_dl_message_h_sm_operate12 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   if (dl->message_handler.mhcmd == IOL_MHCMD_STARTUP) // T38
+   {
+#if IOLINK_HW == IOLINK_HW_MAX14819
+      PL_DisableCycleTimer (port);
+#endif
+      set_mseq_change (dl);
+      dl->message_handler.state = IOL_DL_MH_ST_STARTUP_2;
+   }
+   else if (dl->message_handler.mhcmd == IOL_MHCMD_INACTIVE) // T35
+   {
+      MHInfo_ind (dl, IOLINK_MHINFO_COMLOST);
+      os_event_set (dl->event, IOLINK_DL_EVENT_MDH);
+#if IOLINK_HW == IOLINK_HW_MAX14819
+      PL_DisableCycleTimer (port);
+#endif
+      dl->message_handler.state = IOL_DL_MH_ST_INACTIVE_0;
+   }
+   else if (dl->timer_elapsed) // Initial waiting time before starting PD
+                                 // cycle
+   {
+      // PD Trig
+      dl->pd_handler.trigger = IOL_TRIGGERED_MASTER_MESSAGE;
+      iolink_dl_message_h_sm_get_pd13 (port);
+   }
+   else
+   {
+      iolink_dl_message_h_sm_get_pd13 (port);
+   }
+}
+
+static void iolink_dl_message_h_sm_get_pd13 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   iolink_dl_pd_h_sm (port);
+
+   if (dl->message_handler.interleave == IOL_DL_INTERLEAVE_NONE)
+   {
+      // OD Trig
+      dl->od_handler.trigger = IOL_TRIGGERED_MASTER_MESSAGE;
+   }
+   iolink_dl_message_h_sm_get_od14 (port);
+}
+
+static void iolink_dl_message_h_sm_get_od14 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   if (dl->message_handler.interleave == IOL_DL_INTERLEAVE_NONE)
+   {
+      iolink_dl_od_h_sm (port);
+   }
+   dl->message_handler.retry = 0;
+   dl->dataready             = false;
+#if IOLINK_HW == IOLINK_HW_MAX14819
+   PL_EnableCycleTimer (port);
+   PL_Transfer_req (
+      port,
+      dl->od_handler.od_rxlen + dl->pd_handler.pd_rxlen + 1,
+      dl->od_handler.od_txlen + dl->pd_handler.pd_txlen + 2,
+      dl->txbuffer);
+   LOG_DEBUG (IOLINK_DL_LOG, "%s: Message sent\n", __func__);
+#endif
+   dl->message_handler.state = IOL_DL_MH_ST_RESPONSE_15; // T29
+}
+
+static void iolink_dl_message_h_sm_response15 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_16;
+   iolink_dl_message_h_sm_await_reply16 (port);
+}
+
+static void iolink_dl_message_h_sm_await_reply16 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   if (dl->message_handler.mhcmd == IOL_MHCMD_STARTUP) // T38
+   {
+#if IOLINK_HW == IOLINK_HW_MAX14819
+      PL_DisableCycleTimer (port);
+#endif
+      set_mseq_change (dl);
+      dl->message_handler.state = IOL_DL_MH_ST_STARTUP_2;
+   }
+   else if (dl->message_handler.mhcmd == IOL_MHCMD_INACTIVE) // T35
+   {
+      MHInfo_ind (dl, IOLINK_MHINFO_COMLOST);
+      os_event_set (dl->event, IOLINK_DL_EVENT_MDH);
+#if IOLINK_HW == IOLINK_HW_MAX14819
+      PL_DisableCycleTimer (port);
+#endif
+      dl->message_handler.state = IOL_DL_MH_ST_INACTIVE_0;
+   }
+   else if (dl->message_handler.rwcmd == IOL_MHRW_WRITEPARAM) // SDCI_TC_0196
+   {
+      dl->od_handler.trigger = IOL_TRIGGERED_MASTER_MESSAGE;
+      iolink_dl_od_h_sm (port);
+      dl->message_handler.retry = 0;
+      dl->dataready             = false;
+#if IOLINK_HW == IOLINK_HW_MAX14819
+      os_mutex_lock (dl->mtx);
+      PL_MessageDownload_req (
+         port,
+         dl->od_handler.od_rxlen + dl->pd_handler.pd_rxlen + 1,
+         dl->od_handler.od_txlen + dl->pd_handler.pd_txlen + 2,
+         dl->txbuffer);
+      os_mutex_unlock (dl->mtx);
+#endif
+      dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_9;
+   }
+   else if (dl->dataready)
+   {
+      dl->message_handler.cks =
+         dl->rxbuffer[dl->od_handler.od_rxlen + dl->pd_handler.pd_rxlen];
+      EventFlag_ind (dl, getCKSEvFlag (dl));
+      PDInStatus_ind (port, getCKSPDIn (dl));
+
+      if (dl->message_handler.interleave != IOL_DL_INTERLEAVE_OD)
+      {
+         // PD Trig
+         dl->pd_handler.trigger = IOL_TRIGGERED_DEVICE_MESSAGE;
+         iolink_dl_pd_h_sm (port);
+
+         if (dl->message_handler.interleave == IOL_DL_INTERLEAVE_PD)
+         {
+            dl->message_handler.interleave = IOL_DL_INTERLEAVE_OD;
+         }
+      }
+
+      if (dl->message_handler.interleave != IOL_DL_INTERLEAVE_PD)
+      {
+         // OD Trig
+         dl->od_handler.trigger = IOL_TRIGGERED_DEVICE_MESSAGE;
+         iolink_dl_od_h_sm (port);
+
+         if (dl->message_handler.interleave == IOL_DL_INTERLEAVE_OD)
+         {
+            dl->message_handler.interleave = IOL_DL_INTERLEAVE_PD;
+         }
+      }
+
+      // Prepare next message
+      // PD Trig
+      dl->pd_handler.trigger = IOL_TRIGGERED_MASTER_MESSAGE;
+      iolink_dl_pd_h_sm (port);
+      // OD Trig
+      dl->od_handler.trigger = IOL_TRIGGERED_MASTER_MESSAGE;
+      iolink_dl_od_h_sm (port);
+#if IOLINK_HW == IOLINK_HW_MAX14819
+      os_mutex_lock (dl->mtx);
+      PL_MessageDownload_req (
+         port,
+         dl->od_handler.od_rxlen + dl->pd_handler.pd_rxlen + 1,
+         dl->od_handler.od_txlen + dl->pd_handler.pd_txlen + 2,
+         dl->txbuffer);
+      os_mutex_unlock (dl->mtx);
+#endif
+      dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_16; // T34
+      dl->dataready             = false;
+   }
+   else if (
+      dl->rxtimeout || // T30
+      dl->rxerror)     // T31
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: %s: %s on Port %d\n",
+         __func__,
+         iolink_dl_mh_st_literals[dl->message_handler.state],
+         (dl->rxtimeout) ? "RXTimeout" : "RXError",
+         iolink_get_portnumber (port));
+
+      dl->rxtimeout = false;
+      dl->rxerror   = false;
+
+      if (dl->message_handler.retry >= IOLINK_MAX_RETRY) // T33
+      {
+         iolink_dl_mh_handle_com_lost (port);
+      }
+
+      dl->message_handler.retry++;
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: %s: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_dl_mh_st_literals[dl->message_handler.state],
+         iolink_get_portnumber (port));
+      dl->cqerr  = 0;
+      dl->devdly = 0;
+      iolink_pl_get_error (port, &dl->cqerr, &dl->devdly);
+   }
+}
+
+static void iolink_dl_message_h_sm_error_handling17 (iolink_port_t * port)
+{
+   iolink_dl_t * dl    = iolink_get_dl_ctx (port);
+
+   if (dl->message_handler.retry >= IOLINK_MAX_RETRY) // T33
+   {
+      iolink_dl_mh_handle_com_lost (port);
+   }
+   else if (dl->timer_tcyc_elapsed) // T32
+   {
+#if IOLINK_HW == IOLINK_HW_MAX14819
+      PL_Resend (port);
+#endif
+      dl->message_handler.retry++;
+      dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_16;
+   }
+   else
+   {
+      if (dl->dataready)
+      {
+         LOG_ERROR (
+            IOLINK_DL_LOG,
+            "%s: %s: Rxdata arrived too late. Trying to recover. Port %d\n",
+            __func__,
+            iolink_dl_mh_st_literals[dl->message_handler.state],
+            iolink_get_portnumber (port));
+         dl->message_handler.cks =
+            dl->rxbuffer[dl->od_handler.od_rxlen + dl->pd_handler.pd_rxlen];
+         PDInStatus_ind (port, getCKSPDIn (dl));
+         // PD Trig
+         dl->pd_handler.trigger = IOL_TRIGGERED_DEVICE_MESSAGE;
+         iolink_dl_pd_h_sm (port);
+         // OD Trig
+         dl->od_handler.trigger = IOL_TRIGGERED_DEVICE_MESSAGE;
+         EventFlag_ind (dl, getCKSEvFlag (dl));
+         iolink_dl_od_h_sm (port);
+         dl->message_handler.state = IOL_DL_MH_ST_OPERATE_12; // T34
+      }
+      else
+      {
+         LOG_ERROR (
+            IOLINK_DL_LOG,
+            "%s: %s: unknown event triggered. Port %d\n",
+            __func__,
+            iolink_dl_mh_st_literals[dl->message_handler.state],
+            iolink_get_portnumber (port));
+      }
+   }
+}
+
 static void iolink_dl_message_h_sm (iolink_port_t * port)
 {
    iolink_dl_t * dl    = iolink_get_dl_ctx (port);
@@ -633,536 +1368,66 @@ static void iolink_dl_message_h_sm (iolink_port_t * port)
    switch (dl->message_handler.state)
    {
    case IOL_DL_MH_ST_INACTIVE_0:
-#if IOLINK_HW == IOLINK_HW_MAX14819
-      PL_DisableCycleTimer (port);
-#endif
+      iolink_dl_message_h_sm_inactive0 (port);
       break;
    case IOL_DL_MH_ST_AW_REPLY_1:
-#if IOLINK_HW == IOLINK_HW_MAX14819
-      if (dl->baudrate != IOLINK_BAUDRATE_NONE) // T2
-      {
-         dl->message_handler.state = IOL_DL_MH_ST_STARTUP_2;
-         DL_Read_cnf (port, dl->cycbyte, IOLINK_STATUS_NO_ERROR);
-         dl->tinitcyc = 0;
-      }
-      else // T3
-      {
-         dl->message_handler.state = IOL_DL_MH_ST_INACTIVE_0;
-      }
-#endif
+      iolink_dl_message_h_sm_await_reply1 (port);
       break;
    case IOL_DL_MH_ST_STARTUP_2:
-      if (dl->message_handler.mhcmd == IOL_MHCMD_PREOPERATE) // T12
-      {
-         set_mseq_change (dl);
-         dl->message_handler.state = IOL_DL_MH_ST_PREOPERATE_6;
-      }
-      else if (dl->message_handler.mhcmd == IOL_MHCMD_OPERATE) // T39
-      {
-         start_timer_initcyc (dl);
-         set_mseq_change (dl);
-         dl->message_handler.state = IOL_DL_MH_ST_OPERATE_12;
-      }
-      else if (
-         (dl->message_handler.rwcmd == IOL_MHRW_READ) ||
-         (dl->message_handler.rwcmd == IOL_MHRW_WRITE))
-      {
-         dl->message_handler.retry = 0;
-         dl->dataready             = false;
-#if IOLINK_HW == IOLINK_HW_MAX14819
-         if (dl->tinitcyc++ < 4)
-         {
-            os_usleep ((get_T_initcyc (dl) + 4000) / 2);
-         }
-         PL_Transfer_req (
-            port,
-            dl->od_handler.od_rxlen + 1, // T5, T6
-            dl->od_handler.od_txlen + 2,
-            dl->txbuffer);
-#endif
-         dl->message_handler.state = IOL_DL_MH_ST_RESPONSE_3;
-      }
-      else if (dl->message_handler.mhcmd != IOL_MHCMD_INACTIVE)
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: %s: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_dl_mh_st_literals[dl->message_handler.state],
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_message_h_sm_startup2 (port);
       break;
    case IOL_DL_MH_ST_RESPONSE_3:
-      dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_4;
-      // fall through
+      iolink_dl_message_h_sm_response3 (port);
+      break;
    case IOL_DL_MH_ST_AW_REPLY_4:
-      if (dl->dataready) // T10
-      {
-         dl->message_handler.state = IOL_DL_MH_ST_STARTUP_2;
-
-         if (dl->message_handler.rwcmd == IOL_MHRW_READ)
-         {
-            dl->message_handler.rwcmd = IOL_MHRW_NONE;
-            DL_Read_cnf (port, dl->rxbuffer[0], IOLINK_STATUS_NO_ERROR);
-         }
-         else if (dl->message_handler.rwcmd == IOL_MHRW_WRITE)
-         {
-            dl->message_handler.rwcmd = IOL_MHRW_NONE;
-            DL_Write_cnf (port, IOLINK_STATUS_NO_ERROR);
-         }
-      }
-      else if (
-         (dl->rxtimeout) || // T7
-         (dl->rxerror))     // T8
-      {
-         start_timer_initcyc (dl);
-         dl->message_handler.state = IOL_DL_MH_ST_ERRORHANDLING_5;
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: %s: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_dl_mh_st_literals[dl->message_handler.state],
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_message_h_sm_await_reply4 (port);
       break;
    case IOL_DL_MH_ST_ERRORHANDLING_5:
-      if (dl->message_handler.retry >= IOLINK_MAX_RETRY) // T11
-      {
-         dl->timer_type = IOL_DL_TIMER_NONE;
-         MHInfo_ind (dl, IOLINK_MHINFO_COMLOST);
-         dl->message_handler.state = IOL_DL_MH_ST_INACTIVE_0;
-         os_event_set (dl->event, IOLINK_DL_EVENT_MDH);
-
-         if (dl->message_handler.rwcmd == IOL_MHRW_READ)
-         {
-            dl->message_handler.rwcmd = IOL_MHRW_NONE;
-            DL_Read_cnf (port, 0, IOLINK_STATUS_NO_COMM);
-         }
-         else if (dl->message_handler.rwcmd == IOL_MHRW_WRITE)
-         {
-            dl->message_handler.rwcmd = IOL_MHRW_NONE;
-            DL_Write_cnf (port, IOLINK_STATUS_NO_COMM);
-         }
-      }
-      else if (dl->timer_elapsed && (dl->timer_type == IOL_DL_TIMER_TINITCYC_MH)) // T9
-      {
-#if IOLINK_HW == IOLINK_HW_MAX14819
-         PL_Resend (port);
-#endif
-         dl->message_handler.retry++;
-         dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_4;
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: %s: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_dl_mh_st_literals[dl->message_handler.state],
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_message_h_sm_error_handling5 (port);
       break;
    case IOL_DL_MH_ST_PREOPERATE_6:
-      if (dl->message_handler.mhcmd == IOL_MHCMD_OPERATE) // T26
-      {
-         start_timer_initcyc (dl);
-         set_mseq_change (dl);
-         dl->message_handler.state = IOL_DL_MH_ST_OPERATE_12;
-         break;
-      }
-      else if (dl->message_handler.mhcmd == IOL_MHCMD_STARTUP) // T37
-      {
-         set_mseq_change (dl);
-         dl->message_handler.state = IOL_DL_MH_ST_STARTUP_2;
-         break;
-      }
-      else if (dl->message_handler.mhcmd == IOL_MHCMD_INACTIVE) // T36
-      {
-         MHInfo_ind (dl, IOLINK_MHINFO_COMLOST);
-         os_event_set (dl->event, IOLINK_DL_EVENT_MDH);
-#if IOLINK_HW == IOLINK_HW_MAX14819
-         PL_Transfer_req (
-            port,
-            dl->od_handler.od_rxlen + 1,
-            dl->od_handler.od_txlen + 2,
-            dl->txbuffer);
-#endif
-         dl->message_handler.state = IOL_DL_MH_ST_INACTIVE_0;
-         break;
-      }
-      else if (
-         (dl->message_handler.rwcmd == IOL_MHRW_READPARAM) ||
-         (dl->message_handler.rwcmd == IOL_MHRW_WRITEPARAM) ||
-         (dl->message_handler.rwcmd == IOL_MHRW_ISDUTRANSPORT) ||
-         (dl->cmd_handler.master_command == IOL_MASTERCMD_DEVICE_OPERATE) ||
-         dl->event_handler.event_flag)
-      {
-         dl->message_handler.retry = 0;
-         // OD_Trig
-         dl->od_handler.trigger    = IOL_TRIGGERED_MASTER_MESSAGE;
-         dl->message_handler.state = IOL_DL_MH_ST_GETOD_7; // T13, T14, T15,
-                                                           // T17, T16
-         start_timer_initcyc (dl);
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: %s: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_dl_mh_st_literals[dl->message_handler.state],
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_message_h_sm_preoperate6 (port);
       break;
    case IOL_DL_MH_ST_GETOD_7:
-      iolink_dl_od_h_sm (port);
-      dl->message_handler.retry = 0;
-      dl->dataready             = false;
-      // start_timer_initcyc(dl);
-#if IOLINK_HW == IOLINK_HW_MAX14819
-      PL_Transfer_req (
-         port,
-         dl->od_handler.od_rxlen + 1,
-         dl->od_handler.od_txlen + 2,
-         dl->txbuffer);
-      LOG_DEBUG (IOLINK_DL_LOG, "%s: Message sent (PreOp)\n", __func__);
-      dl->message_handler.state = IOL_DL_MH_ST_RESPONSE_8; // T18
-#endif
+      iolink_dl_message_h_sm_get_od7 (port);
       break;
    case IOL_DL_MH_ST_RESPONSE_8:
-      // fall through
+      iolink_dl_message_h_sm_response8 (port);
+      break;
    case IOL_DL_MH_ST_AW_REPLY_9:
-      if (dl->dataready)
-      {
-         OD_cnf (
-            dl,
-            &dl->rxbuffer[0],
-            dl->od_handler.od_rxlen,
-            IOLINK_STATUS_NO_ERROR);
-         // ODTrig
-         dl->od_handler.trigger = IOL_TRIGGERED_DEVICE_MESSAGE;
-         EventFlag_ind (dl, getCKSEvFlag (dl));
-         iolink_dl_od_h_sm (port);
-
-         if (dl->isdu_handler.state == IOL_DL_ISDUH_ST_IDLE_1)
-         {
-            if (dl->message_handler.mhcmd == IOL_MHCMD_OPERATE)
-            {
-               start_timer_initcyc (dl);
-               dl->message_handler.state =
-                  IOL_DL_MH_ST_AW_REPLY_16; // SDCI_TC_0196
-            }
-            else if (!dl->event_handler.event_flag)
-            {
-               os_timer_stop (dl->timer);
-               dl->message_handler.state = IOL_DL_MH_ST_PREOPERATE_6; // T23,
-                                                                      // T25
-            }
-         }
-         else
-         {
-            start_timer_initcyc (dl);
-            dl->od_handler.trigger    = IOL_TRIGGERED_MASTER_MESSAGE;
-            dl->message_handler.state = IOL_DL_MH_ST_GETOD_7; // T23, T24
-         }
-      }
-      else if (
-         dl->rxtimeout || // T19
-         dl->rxerror)     // T20
-      {
-         start_timer_initcyc (dl);
-         dl->rxtimeout             = false;
-         dl->rxerror               = false;
-         dl->message_handler.state = IOL_DL_MH_ST_ERRORHANDLING_10;
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: %s: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_dl_mh_st_literals[dl->message_handler.state],
-            iolink_get_portnumber (port));
-         dl->cqerr  = 0;
-         dl->devdly = 0;
-         iolink_pl_get_error (port, &dl->cqerr, &dl->devdly);
-      }
+      iolink_dl_message_h_sm_await_reply9 (port);
       break;
    case IOL_DL_MH_ST_ERRORHANDLING_10:
-      if (dl->message_handler.retry >= IOLINK_MAX_RETRY) // T22
-      {
-         write_master_command (port, IOLINK_STATUS_NO_COMM);
-
-         switch (dl->message_handler.rwcmd)
-         {
-         case IOL_MHRW_READ:
-            DL_Read_cnf (port, 0, IOLINK_STATUS_NO_COMM);
-            break;
-         case IOL_MHRW_WRITE:
-            DL_Write_cnf (port, IOLINK_STATUS_NO_COMM);
-            break;
-         case IOL_MHRW_READPARAM:
-            DL_ReadParam_cnf (port, 0, IOLINK_STATUS_NO_COMM);
-            break;
-         case IOL_MHRW_WRITEPARAM:
-            DL_WriteParam_cnf (port, IOLINK_STATUS_NO_COMM);
-            break;
-         default:
-            break;
-         }
-
-         iolink_dl_mh_handle_com_lost (port);
-      }
-      else if (dl->timer_elapsed && (dl->timer_type == IOL_DL_TIMER_TINITCYC_MH)) // T9
-      {
-#if IOLINK_HW == IOLINK_HW_MAX14819
-         PL_Resend (port);
-#endif
-         dl->message_handler.retry++;
-         dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_9; // T21
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: %s: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_dl_mh_st_literals[dl->message_handler.state],
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_message_h_sm_error_handling10 (port);
       break;
    case IOL_DL_MH_ST_CHECKHANDLER_11:
-      // Empty state
+      iolink_dl_message_h_sm_check_handler11 ();
       break;
    case IOL_DL_MH_ST_OPERATE_12:
-      if (dl->message_handler.mhcmd == IOL_MHCMD_STARTUP) // T38
-      {
-#if IOLINK_HW == IOLINK_HW_MAX14819
-         PL_DisableCycleTimer (port);
-#endif
-         set_mseq_change (dl);
-         dl->message_handler.state = IOL_DL_MH_ST_STARTUP_2;
-         break;
-      }
-      else if (dl->message_handler.mhcmd == IOL_MHCMD_INACTIVE) // T35
-      {
-         MHInfo_ind (dl, IOLINK_MHINFO_COMLOST);
-         os_event_set (dl->event, IOLINK_DL_EVENT_MDH);
-#if IOLINK_HW == IOLINK_HW_MAX14819
-         PL_DisableCycleTimer (port);
-#endif
-         dl->message_handler.state = IOL_DL_MH_ST_INACTIVE_0;
-         break;
-      }
-      else if (dl->timer_elapsed) // Initial waiting time before starting PD
-                                  // cycle
-      {
-         // PD Trig
-         dl->pd_handler.trigger = IOL_TRIGGERED_MASTER_MESSAGE;
-      }
-      // fall through
+      iolink_dl_message_h_sm_operate12 (port);
+      break;
    case IOL_DL_MH_ST_GETPD_13:
-      iolink_dl_pd_h_sm (port);
-
-      if (dl->message_handler.interleave == IOL_DL_INTERLEAVE_NONE)
-      {
-         // OD Trig
-         dl->od_handler.trigger = IOL_TRIGGERED_MASTER_MESSAGE;
-      }
-      // fall through
+      iolink_dl_message_h_sm_get_pd13 (port);
+      break;
    case IOL_DL_MH_ST_GETOD_14:
-      if (dl->message_handler.interleave == IOL_DL_INTERLEAVE_NONE)
-      {
-         iolink_dl_od_h_sm (port);
-      }
-      dl->message_handler.retry = 0;
-      dl->dataready             = false;
-#if IOLINK_HW == IOLINK_HW_MAX14819
-      PL_EnableCycleTimer (port);
-      PL_Transfer_req (
-         port,
-         dl->od_handler.od_rxlen + dl->pd_handler.pd_rxlen + 1,
-         dl->od_handler.od_txlen + dl->pd_handler.pd_txlen + 2,
-         dl->txbuffer);
-      LOG_DEBUG (IOLINK_DL_LOG, "%s: Message sent\n", __func__);
-#endif
-      dl->message_handler.state = IOL_DL_MH_ST_RESPONSE_15; // T29
+      iolink_dl_message_h_sm_get_od14 (port);
       break;
    case IOL_DL_MH_ST_RESPONSE_15:
-      dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_16;
-      // fall through
+      iolink_dl_message_h_sm_response15 (port);
+      break;
    case IOL_DL_MH_ST_AW_REPLY_16:
-      if (dl->message_handler.mhcmd == IOL_MHCMD_STARTUP) // T38
-      {
-#if IOLINK_HW == IOLINK_HW_MAX14819
-         PL_DisableCycleTimer (port);
-#endif
-         set_mseq_change (dl);
-         dl->message_handler.state = IOL_DL_MH_ST_STARTUP_2;
-         break;
-      }
-      else if (dl->message_handler.mhcmd == IOL_MHCMD_INACTIVE) // T35
-      {
-         MHInfo_ind (dl, IOLINK_MHINFO_COMLOST);
-         os_event_set (dl->event, IOLINK_DL_EVENT_MDH);
-#if IOLINK_HW == IOLINK_HW_MAX14819
-         PL_DisableCycleTimer (port);
-#endif
-         dl->message_handler.state = IOL_DL_MH_ST_INACTIVE_0;
-         break;
-      }
-      else if (dl->message_handler.rwcmd == IOL_MHRW_WRITEPARAM) // SDCI_TC_0196
-      {
-         dl->od_handler.trigger = IOL_TRIGGERED_MASTER_MESSAGE;
-         iolink_dl_od_h_sm (port);
-         dl->message_handler.retry = 0;
-         dl->dataready             = false;
-#if IOLINK_HW == IOLINK_HW_MAX14819
-         os_mutex_lock (dl->mtx);
-         PL_MessageDownload_req (
-            port,
-            dl->od_handler.od_rxlen + dl->pd_handler.pd_rxlen + 1,
-            dl->od_handler.od_txlen + dl->pd_handler.pd_txlen + 2,
-            dl->txbuffer);
-         os_mutex_unlock (dl->mtx);
-#endif
-         dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_9;
-         break;
-      }
-
-      if (dl->dataready)
-      {
-         dl->message_handler.cks =
-            dl->rxbuffer[dl->od_handler.od_rxlen + dl->pd_handler.pd_rxlen];
-         EventFlag_ind (dl, getCKSEvFlag (dl));
-         PDInStatus_ind (port, getCKSPDIn (dl));
-
-         if (dl->message_handler.interleave != IOL_DL_INTERLEAVE_OD)
-         {
-            // PD Trig
-            dl->pd_handler.trigger = IOL_TRIGGERED_DEVICE_MESSAGE;
-            iolink_dl_pd_h_sm (port);
-
-            if (dl->message_handler.interleave == IOL_DL_INTERLEAVE_PD)
-            {
-               dl->message_handler.interleave = IOL_DL_INTERLEAVE_OD;
-            }
-         }
-
-         if (dl->message_handler.interleave != IOL_DL_INTERLEAVE_PD)
-         {
-            // OD Trig
-            dl->od_handler.trigger = IOL_TRIGGERED_DEVICE_MESSAGE;
-            iolink_dl_od_h_sm (port);
-
-            if (dl->message_handler.interleave == IOL_DL_INTERLEAVE_OD)
-            {
-               dl->message_handler.interleave = IOL_DL_INTERLEAVE_PD;
-            }
-         }
-
-         // Prepare next message
-         // PD Trig
-         dl->pd_handler.trigger = IOL_TRIGGERED_MASTER_MESSAGE;
-         iolink_dl_pd_h_sm (port);
-         // OD Trig
-         dl->od_handler.trigger = IOL_TRIGGERED_MASTER_MESSAGE;
-         iolink_dl_od_h_sm (port);
-#if IOLINK_HW == IOLINK_HW_MAX14819
-         os_mutex_lock (dl->mtx);
-         PL_MessageDownload_req (
-            port,
-            dl->od_handler.od_rxlen + dl->pd_handler.pd_rxlen + 1,
-            dl->od_handler.od_txlen + dl->pd_handler.pd_txlen + 2,
-            dl->txbuffer);
-         os_mutex_unlock (dl->mtx);
-#endif
-         dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_16; // T34
-         dl->dataready             = false;
-      }
-      else if (
-         dl->rxtimeout || // T30
-         dl->rxerror)     // T31
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: %s: %s on Port %d\n",
-            __func__,
-            iolink_dl_mh_st_literals[dl->message_handler.state],
-            (dl->rxtimeout) ? "RXTimeout" : "RXError",
-            iolink_get_portnumber (port));
-
-         dl->rxtimeout = false;
-         dl->rxerror   = false;
-
-         if (dl->message_handler.retry >= IOLINK_MAX_RETRY) // T33
-         {
-            iolink_dl_mh_handle_com_lost (port);
-         }
-
-         dl->message_handler.retry++;
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: %s: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_dl_mh_st_literals[dl->message_handler.state],
-            iolink_get_portnumber (port));
-         dl->cqerr  = 0;
-         dl->devdly = 0;
-         iolink_pl_get_error (port, &dl->cqerr, &dl->devdly);
-      }
+      iolink_dl_message_h_sm_await_reply16 (port);
       break;
    case IOL_DL_MH_ST_ERRORHANDLING_17:
-      if (dl->message_handler.retry >= IOLINK_MAX_RETRY) // T33
-      {
-         iolink_dl_mh_handle_com_lost (port);
-      }
-      else if (dl->timer_tcyc_elapsed) // T32
-      {
-#if IOLINK_HW == IOLINK_HW_MAX14819
-         PL_Resend (port);
-#endif
-         dl->message_handler.retry++;
-         dl->message_handler.state = IOL_DL_MH_ST_AW_REPLY_16;
-      }
-      else
-      {
-         if (dl->dataready)
-         {
-            LOG_ERROR (
-               IOLINK_DL_LOG,
-               "%s: %s: Rxdata arrived too late. Trying to recover. Port %d\n",
-               __func__,
-               iolink_dl_mh_st_literals[dl->message_handler.state],
-               iolink_get_portnumber (port));
-            dl->message_handler.cks =
-               dl->rxbuffer[dl->od_handler.od_rxlen + dl->pd_handler.pd_rxlen];
-            PDInStatus_ind (port, getCKSPDIn (dl));
-            // PD Trig
-            dl->pd_handler.trigger = IOL_TRIGGERED_DEVICE_MESSAGE;
-            iolink_dl_pd_h_sm (port);
-            // OD Trig
-            dl->od_handler.trigger = IOL_TRIGGERED_DEVICE_MESSAGE;
-            EventFlag_ind (dl, getCKSEvFlag (dl));
-            iolink_dl_od_h_sm (port);
-            dl->message_handler.state = IOL_DL_MH_ST_OPERATE_12; // T34
-         }
-         else
-         {
-            LOG_ERROR (
-               IOLINK_DL_LOG,
-               "%s: %s: unknown event triggered. Port %d\n",
-               __func__,
-               iolink_dl_mh_st_literals[dl->message_handler.state],
-               iolink_get_portnumber (port));
-         }
-      }
+      iolink_dl_message_h_sm_error_handling17 (port);
+      break;
+   default:
+      /* This should never happen */
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: Invalid state: %d:\n",
+         __func__,
+         dl->message_handler.state);
       break;
    }
 
@@ -1177,6 +1442,176 @@ static void iolink_dl_message_h_sm (iolink_port_t * port)
    }
 }
 
+static void iolink_dl_pd_h_sm_inactive0 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->pd_handler.phcmd == IOL_PHCMD_SINGLE)
+   {
+      dl->pd_handler.state = IOL_DL_PDH_ST_PDSINGLE_1; // T2
+   }
+   else if (dl->pd_handler.phcmd == IOL_PHCMD_INTERLEAVE)
+   {
+      dl->pd_handler.state = IOL_DL_PDH_ST_PDININTERLEAVE_2; // T4
+   }
+   else if (dl->pd_handler.trigger != IOL_TRIGGERED_NONE) // T1
+   {
+      dl->pd_handler.trigger = IOL_TRIGGERED_NONE;
+      PD_req (dl, 0, 0, NULL, 0, 0);
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: INACTIVE_0: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_pd_h_sm_pd_single1 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->pd_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE) // T3
+   {
+      dl->pd_handler.trigger = IOL_TRIGGERED_NONE;
+      PD_req (
+         dl,
+         0,
+         dl->pd_handler.pd_rxlen,
+         dl->pd_handler.pdoutdata,
+         0,
+         dl->pd_handler.pd_txlen);
+   }
+   else if (dl->pd_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE) // T3
+   {
+      dl->pd_handler.trigger = IOL_TRIGGERED_NONE;
+      DL_PDInputTransport_ind (
+         port,
+         &dl->rxbuffer[dl->od_handler.od_rxlen],
+         dl->pd_handler.pd_rxlen);
+   }
+   else if (dl->pd_handler.phcmd == IOL_PHCMD_INACTIVE)
+   {
+      dl->pd_handler.state = IOL_DL_PDH_ST_INACTIVE_0; // T9
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: PDSINGLE_1: unknown event triggered (t:%d, c:%d). Port %d\n",
+         __func__,
+         dl->pd_handler.trigger,
+         dl->pd_handler.phcmd,
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_pd_h_sm_pd_in_interleave2 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->pd_handler.phcmd == IOL_PHCMD_INACTIVE)
+   {
+      dl->pd_handler.state = IOL_DL_PDH_ST_INACTIVE_0; // T10
+   }
+   else if (dl->pd_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE) // T5
+   {
+      dl->pd_handler.trigger = IOL_TRIGGERED_NONE;
+      OD_req (
+         dl,
+         IOLINK_RWDIRECTION_READ,
+         IOLINK_COMCHANNEL_PROCESS,
+         dl->pd_handler.pd_address,
+         0,
+         NULL);
+      interleave_reset_od_sizes (dl);
+   }
+   else if (dl->pd_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE)
+   {
+      memcpy (
+         &dl->pd_handler.pdindata[dl->pd_handler.pd_address],
+         dl->rxbuffer,
+         2);
+      dl->pd_handler.pd_address += 2;
+
+      if (dl->pd_handler.pd_address >= dl->pd_handler.pd_rxlen)
+      {
+         dl->pd_handler.pd_address = 0;
+         DL_PDInputTransport_ind (
+            port,
+            dl->pd_handler.pdindata,
+            dl->pd_handler.pd_rxlen);
+         // Stay in PDININTERLEAVE since no tx-data
+
+         if (dl->pd_handler.pd_txlen > 0)
+         {
+            dl->pd_handler.state = IOL_DL_PDH_ST_PDOUTINTERLEAVE_3; // T6
+         }
+      }
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: PDININTERLEAVE_2: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_pd_h_sm_pd_out_interleave3 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->pd_handler.phcmd == IOL_PHCMD_INACTIVE)
+   {
+      dl->pd_handler.state = IOL_DL_PDH_ST_INACTIVE_0; // T11
+   }
+   else if (dl->pd_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE) // T7
+   {
+      dl->pd_handler.trigger = IOL_TRIGGERED_NONE;
+      PD_req (dl, 0, 0, dl->pd_handler.pdoutdata, dl->pd_handler.pd_address, 2);
+      OD_req (
+         dl,
+         IOLINK_RWDIRECTION_WRITE,
+         IOLINK_COMCHANNEL_PROCESS,
+         dl->pd_handler.pd_address,
+         0,
+         NULL);
+      interleave_reset_od_sizes (dl);
+      dl->pd_handler.pd_address += 2;
+   }
+   else if (dl->pd_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE)
+   {
+      dl->pd_handler.trigger = IOL_TRIGGERED_NONE;
+
+      if (dl->pd_handler.pd_address >= dl->pd_handler.pd_rxlen)
+      {
+         dl->pd_handler.pd_address = 0;
+         // Stay in PDOUTINTERLEAVE since no rx-data
+
+         if (dl->pd_handler.pd_rxlen > 0)
+         {
+            dl->pd_handler.state = IOL_DL_PDH_ST_PDININTERLEAVE_2; // T8
+         }
+      }
+      else
+      {
+         // T7 response
+      }
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: PDOUTINTERLEAVE_3: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
 static void iolink_dl_pd_h_sm (iolink_port_t * port)
 {
    iolink_dl_t * dl = iolink_get_dl_ctx (port);
@@ -1184,163 +1619,29 @@ static void iolink_dl_pd_h_sm (iolink_port_t * port)
    switch (dl->pd_handler.state)
    {
    case IOL_DL_PDH_ST_INACTIVE_0:
-      if (dl->pd_handler.phcmd == IOL_PHCMD_SINGLE)
-      {
-         dl->pd_handler.state = IOL_DL_PDH_ST_PDSINGLE_1; // T2
-      }
-      else if (dl->pd_handler.phcmd == IOL_PHCMD_INTERLEAVE)
-      {
-         dl->pd_handler.state = IOL_DL_PDH_ST_PDININTERLEAVE_2; // T4
-      }
-      else if (dl->pd_handler.trigger != IOL_TRIGGERED_NONE) // T1
-      {
-         dl->pd_handler.trigger = IOL_TRIGGERED_NONE;
-         PD_req (dl, 0, 0, NULL, 0, 0);
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: INACTIVE_0: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_pd_h_sm_inactive0 (port);
       break;
    case IOL_DL_PDH_ST_PDSINGLE_1:
-      if (dl->pd_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE) // T3
-      {
-         dl->pd_handler.trigger = IOL_TRIGGERED_NONE;
-         PD_req (
-            dl,
-            0,
-            dl->pd_handler.pd_rxlen,
-            dl->pd_handler.pdoutdata,
-            0,
-            dl->pd_handler.pd_txlen);
-      }
-      else if (dl->pd_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE) // T3
-      {
-         dl->pd_handler.trigger = IOL_TRIGGERED_NONE;
-         DL_PDInputTransport_ind (
-            port,
-            &dl->rxbuffer[dl->od_handler.od_rxlen],
-            dl->pd_handler.pd_rxlen);
-      }
-      else if (dl->pd_handler.phcmd == IOL_PHCMD_INACTIVE)
-      {
-         dl->pd_handler.state = IOL_DL_PDH_ST_INACTIVE_0; // T9
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: PDSINGLE_1: unknown event triggered (t:%d, c:%d). Port %d\n",
-            __func__,
-            dl->pd_handler.trigger,
-            dl->pd_handler.phcmd,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_pd_h_sm_pd_single1 (port);
       break;
    case IOL_DL_PDH_ST_PDININTERLEAVE_2:
-      if (dl->pd_handler.phcmd == IOL_PHCMD_INACTIVE)
-      {
-         dl->pd_handler.state = IOL_DL_PDH_ST_INACTIVE_0; // T10
-      }
-      else if (dl->pd_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE) // T5
-      {
-         dl->pd_handler.trigger = IOL_TRIGGERED_NONE;
-         OD_req (
-            dl,
-            IOLINK_RWDIRECTION_READ,
-            IOLINK_COMCHANNEL_PROCESS,
-            dl->pd_handler.pd_address,
-            0,
-            NULL);
-         interleave_reset_od_sizes (dl);
-      }
-      else if (dl->pd_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE)
-      {
-         memcpy (
-            &dl->pd_handler.pdindata[dl->pd_handler.pd_address],
-            dl->rxbuffer,
-            2);
-         dl->pd_handler.pd_address += 2;
-
-         if (dl->pd_handler.pd_address >= dl->pd_handler.pd_rxlen)
-         {
-            dl->pd_handler.pd_address = 0;
-            DL_PDInputTransport_ind (
-               port,
-               dl->pd_handler.pdindata,
-               dl->pd_handler.pd_rxlen);
-            // Stay in PDININTERLEAVE since no tx-data
-
-            if (dl->pd_handler.pd_txlen > 0)
-            {
-               dl->pd_handler.state = IOL_DL_PDH_ST_PDOUTINTERLEAVE_3; // T6
-            }
-         }
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: PDININTERLEAVE_2: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_pd_h_sm_pd_in_interleave2 (port);
       break;
    case IOL_DL_PDH_ST_PDOUTINTERLEAVE_3:
-      if (dl->pd_handler.phcmd == IOL_PHCMD_INACTIVE)
-      {
-         dl->pd_handler.state = IOL_DL_PDH_ST_INACTIVE_0; // T11
-      }
-      else if (dl->pd_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE) // T7
-      {
-         dl->pd_handler.trigger = IOL_TRIGGERED_NONE;
-         PD_req (dl, 0, 0, dl->pd_handler.pdoutdata, dl->pd_handler.pd_address, 2);
-         OD_req (
-            dl,
-            IOLINK_RWDIRECTION_WRITE,
-            IOLINK_COMCHANNEL_PROCESS,
-            dl->pd_handler.pd_address,
-            0,
-            NULL);
-         interleave_reset_od_sizes (dl);
-         dl->pd_handler.pd_address += 2;
-      }
-      else if (dl->pd_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE)
-      {
-         dl->pd_handler.trigger = IOL_TRIGGERED_NONE;
-
-         if (dl->pd_handler.pd_address >= dl->pd_handler.pd_rxlen)
-         {
-            dl->pd_handler.pd_address = 0;
-            // Stay in PDOUTINTERLEAVE since no rx-data
-
-            if (dl->pd_handler.pd_rxlen > 0)
-            {
-               dl->pd_handler.state = IOL_DL_PDH_ST_PDININTERLEAVE_2; // T8
-            }
-         }
-         else
-         {
-            // T7 response
-         }
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: PDOUTINTERLEAVE_3: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_pd_h_sm_pd_out_interleave3 (port);
+      break;
+   default:
+      /* This should never happen */
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: Invalid state: %d:\n",
+         __func__,
+         dl->pd_handler.state);
       break;
    }
 }
 
-static void iolink_dl_isdu_h_sm_isduerror4 (iolink_port_t * port)
+static void iolink_dl_isdu_h_sm_isdu_error4 (iolink_port_t * port)
 {
    iolink_dl_t * dl = iolink_get_dl_ctx (port);
 
@@ -1402,7 +1703,7 @@ static void iolink_dl_isdu_h_sm_enter_isduerror4 (iolink_port_t * port)
    {
       if (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE)
       {
-         iolink_dl_isdu_h_sm_isduerror4 (port);
+         iolink_dl_isdu_h_sm_isdu_error4 (port);
       }
       else
       {
@@ -1450,6 +1751,290 @@ static void iolink_dl_isdu_h_sm_reception_complete (iolink_port_t * port)
    dl->isdu_handler.state            = IOL_DL_ISDUH_ST_IDLE_1; // T8
 }
 
+static void iolink_dl_isdu_h_sm_inactive0 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->isdu_handler.ihcmd == IOL_IHCMD_ACTIVE)
+   {
+      dl->isdu_handler.total_isdu_seg   = 0;
+      dl->isdu_handler.current_isdu_seg = 0;
+      dl->isdu_handler.state            = IOL_DL_ISDUH_ST_IDLE_1; // T1
+   }
+   else if (dl->isdu_handler.ihcmd != IOL_IHCMD_INACTIVE)
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_isdu_h_sm_idle1 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->isdu_handler.ihcmd == IOL_IHCMD_INACTIVE)
+   {
+      if (dl->isdu_handler.total_isdu_seg)
+      {
+         DL_ISDUTransport_cnf (port, NULL, 0, 0, IOLINK_STATUS_NO_COMM); // Not in spec
+         dl->isdu_handler.total_isdu_seg = 0;
+      }
+
+      dl->isdu_handler.state = IOL_DL_ISDUH_ST_INACTIVE_0; // T16
+   }
+   else if (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE)
+   {
+      switch (dl->message_handler.rwcmd)
+      {
+      case IOL_MHRW_ISDUTRANSPORT:
+         OD_req (
+            dl,
+            IOLINK_RWDIRECTION_WRITE,
+            IOLINK_COMCHANNEL_ISDU,
+            IOLINK_FLOWCTRL_START,
+            dl->message_handler.od_len,
+            dl->isdu_handler.isdu_data);
+         dl->isdu_handler.current_isdu_seg = 1;
+         dl->isdu_handler.state = IOL_DL_ISDUH_ST_ISDUREQUEST_2; // T2
+         break;
+      case IOL_MHRW_READPARAM: // T13
+         OD_req (
+            dl,
+            IOLINK_RWDIRECTION_READ,
+            IOLINK_COMCHANNEL_PAGE,
+            dl->od_handler.data_addr,
+            0,
+            0);
+         break;
+      case IOL_MHRW_WRITEPARAM: // T13
+         OD_req (
+            dl,
+            IOLINK_RWDIRECTION_WRITE,
+            IOLINK_COMCHANNEL_PAGE,
+            dl->od_handler.data_addr,
+            1,
+            &dl->od_handler.data_value);
+         break;
+      default: // T14
+         OD_req (
+            dl,
+            IOLINK_RWDIRECTION_READ,
+            IOLINK_COMCHANNEL_ISDU,
+            IOLINK_FLOWCTRL_IDLE_1,
+            0,
+            0);
+         break;
+      }
+   }
+   else if (dl->od_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE)
+   {
+      switch (dl->message_handler.rwcmd)
+      {
+      case IOL_MHRW_READPARAM: // T13 response
+         DL_ReadParam_cnf (port, dl->rxbuffer[0], IOLINK_STATUS_NO_ERROR);
+         dl->message_handler.rwcmd = IOL_MHRW_NONE;
+         break;
+      case IOL_MHRW_WRITEPARAM: // T13 response
+         DL_WriteParam_cnf (port, IOLINK_STATUS_NO_ERROR);
+         dl->message_handler.rwcmd = IOL_MHRW_NONE;
+         break;
+      default: // T14 response
+         break;
+      }
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: IDLE_1: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_isdu_h_sm_isdu_request2 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (
+      (dl->message_handler.rwcmd == IOL_MHRW_ISDUABORT) ||
+      (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST))
+   {
+      iolink_dl_isdu_h_sm_enter_isduerror4 (port); // T12 and T19
+   }
+   else if (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE)
+   {
+      OD_req (
+         dl,
+         IOLINK_RWDIRECTION_WRITE,
+         IOLINK_COMCHANNEL_ISDU,
+         dl->isdu_handler.current_isdu_seg % 16,
+         dl->message_handler.od_len,
+         &dl->isdu_handler.isdu_data
+               [dl->message_handler.od_len * dl->isdu_handler.current_isdu_seg]);
+      dl->isdu_handler.current_isdu_seg++; // T3
+   }
+   else if (dl->od_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE)
+   {
+      if (dl->isdu_handler.current_isdu_seg >= dl->isdu_handler.total_isdu_seg)
+      {
+         isdu_timer_start (dl);
+         dl->isdu_handler.current_isdu_seg = 0;
+         dl->isdu_handler.state = IOL_DL_ISDUH_ST_ISDUWAIT_3; // T4
+      }
+      else
+      {
+         // T3 response
+      }
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_ISDUH_ST_ISDUREQUEST_2: unknown event triggered."
+         " Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_isdu_h_sm_isdu_wait3 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->message_handler.rwcmd == IOL_MHRW_ISDUABORT)
+   {
+      isdu_timer_reset (dl);
+      iolink_dl_isdu_h_sm_enter_isduerror4 (port); // T17
+   }
+   else if (isdu_timer_elapsed (dl) || (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST))
+   {
+      iolink_dl_isdu_h_sm_enter_isduerror4 (port); // T9
+   }
+   else if (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE)
+   {
+      OD_req (
+         dl,
+         IOLINK_RWDIRECTION_READ,
+         IOLINK_COMCHANNEL_ISDU,
+         IOLINK_FLOWCTRL_START,
+         dl->message_handler.od_len,
+         dl->isdu_handler.isdu_data); // T5
+      // T5
+   }
+   else if (dl->od_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE)
+   {
+      memcpy (
+         &dl->isdu_handler.isdu_data
+               [dl->isdu_handler.current_isdu_seg * dl->message_handler.od_len],
+         dl->rxbuffer,
+         dl->message_handler.od_len);
+
+      if (dl->isdu_handler.isdu_data[0] == ((IOL_ISERVICE_DEVICE_NO_SERVICE << 4) | 0x01))
+      {
+         // Device busy
+         // T5 response
+      }
+      else if (dl->isdu_handler.isdu_data[0] == 0)
+      {
+         // No service
+         LOG_INFO (IOLINK_DL_LOG, "%s: ISDUWait. No service!\n", __func__);
+         isdu_timer_reset (dl);
+         iolink_dl_isdu_h_sm_enter_isduerror4 (port); // T9
+      }
+      else
+      {
+         if (!valid_isdu_header (dl))
+         {
+            isdu_timer_reset (dl);
+            iolink_dl_isdu_h_sm_enter_isduerror4 (port); // T9
+         }
+         else
+         {
+            uint8_t isdu_total_len = 0;
+            get_isdu_total_len (dl, &isdu_total_len);
+            dl->isdu_handler.total_isdu_len   = isdu_total_len;
+            dl->isdu_handler.current_isdu_seg = 1;
+            dl->isdu_handler.total_isdu_seg   = get_isdu_total_segments (dl);
+
+            isdu_timer_reset (dl);
+
+            if (dl->isdu_handler.current_isdu_seg >= dl->isdu_handler.total_isdu_seg)
+            {
+               iolink_dl_isdu_h_sm_reception_complete (port); // T6, T8
+            }
+            else
+            {
+               dl->isdu_handler.state = IOL_DL_ISDUH_ST_ISDURESPONSE_5; // T6
+            }
+         }
+      }
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_ISDUH_ST_ISDUWAIT_3: unknown event triggered."
+         " Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_isdu_h_sm_isdu_response5 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (
+      (dl->message_handler.rwcmd == IOL_MHRW_ISDUABORT) || // T18
+      (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST))  // T10
+   {
+      iolink_dl_isdu_h_sm_enter_isduerror4 (port);
+   }
+   else if (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE)
+   {
+      OD_req (
+         dl,
+         IOLINK_RWDIRECTION_READ,
+         IOLINK_COMCHANNEL_ISDU,
+         dl->isdu_handler.current_isdu_seg % 16,
+         dl->message_handler.od_len,
+         &dl->isdu_handler.isdu_data
+               [dl->message_handler.od_len * dl->isdu_handler.current_isdu_seg]);
+      // T7
+   }
+   else if (dl->od_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE)
+   {
+      uint8_t isdu_total_len = 0;
+      get_isdu_total_len (dl, &isdu_total_len);
+      dl->isdu_handler.total_isdu_len = isdu_total_len;
+      dl->isdu_handler.total_isdu_seg = get_isdu_total_segments (dl);
+      memcpy (
+         &dl->isdu_handler.isdu_data
+               [dl->isdu_handler.current_isdu_seg * dl->message_handler.od_len],
+         dl->rxbuffer,
+         dl->message_handler.od_len);
+      dl->isdu_handler.current_isdu_seg++; // T7 response
+
+      if (dl->isdu_handler.current_isdu_seg >= dl->isdu_handler.total_isdu_seg)
+      {
+         iolink_dl_isdu_h_sm_reception_complete (port);
+      }
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_ISDUH_ST_ISDURESPONSE_5: unknown event triggered."
+         " Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
 static void iolink_dl_isdu_h_sm (iolink_port_t * port)
 {
    iolink_dl_t * dl = iolink_get_dl_ctx (port);
@@ -1457,271 +2042,30 @@ static void iolink_dl_isdu_h_sm (iolink_port_t * port)
    switch (dl->isdu_handler.state)
    {
    case IOL_DL_ISDUH_ST_INACTIVE_0:
-      if (dl->isdu_handler.ihcmd == IOL_IHCMD_ACTIVE)
-      {
-         dl->isdu_handler.total_isdu_seg   = 0;
-         dl->isdu_handler.current_isdu_seg = 0;
-         dl->isdu_handler.state            = IOL_DL_ISDUH_ST_IDLE_1; // T1
-      }
-      else if (dl->isdu_handler.ihcmd != IOL_IHCMD_INACTIVE)
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: INACTIVE_0: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_isdu_h_sm_inactive0 (port);
       break;
    case IOL_DL_ISDUH_ST_IDLE_1:
-      if (dl->isdu_handler.ihcmd == IOL_IHCMD_INACTIVE)
-      {
-         if (dl->isdu_handler.total_isdu_seg)
-         {
-            DL_ISDUTransport_cnf (port, NULL, 0, 0, IOLINK_STATUS_NO_COMM); // Not in spec
-            dl->isdu_handler.total_isdu_seg = 0;
-         }
-
-         dl->isdu_handler.state = IOL_DL_ISDUH_ST_INACTIVE_0; // T16
-      }
-      else if (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE)
-      {
-         switch (dl->message_handler.rwcmd)
-         {
-         case IOL_MHRW_ISDUTRANSPORT:
-            OD_req (
-               dl,
-               IOLINK_RWDIRECTION_WRITE,
-               IOLINK_COMCHANNEL_ISDU,
-               IOLINK_FLOWCTRL_START,
-               dl->message_handler.od_len,
-               dl->isdu_handler.isdu_data);
-            dl->isdu_handler.current_isdu_seg = 1;
-            dl->isdu_handler.state = IOL_DL_ISDUH_ST_ISDUREQUEST_2; // T2
-            break;
-         case IOL_MHRW_READPARAM: // T13
-            OD_req (
-               dl,
-               IOLINK_RWDIRECTION_READ,
-               IOLINK_COMCHANNEL_PAGE,
-               dl->od_handler.data_addr,
-               0,
-               0);
-            break;
-         case IOL_MHRW_WRITEPARAM: // T13
-            OD_req (
-               dl,
-               IOLINK_RWDIRECTION_WRITE,
-               IOLINK_COMCHANNEL_PAGE,
-               dl->od_handler.data_addr,
-               1,
-               &dl->od_handler.data_value);
-            break;
-         default: // T14
-            OD_req (
-               dl,
-               IOLINK_RWDIRECTION_READ,
-               IOLINK_COMCHANNEL_ISDU,
-               IOLINK_FLOWCTRL_IDLE_1,
-               0,
-               0);
-            break;
-         }
-      }
-      else if (dl->od_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE)
-      {
-         switch (dl->message_handler.rwcmd)
-         {
-         case IOL_MHRW_READPARAM: // T13 response
-            DL_ReadParam_cnf (port, dl->rxbuffer[0], IOLINK_STATUS_NO_ERROR);
-            dl->message_handler.rwcmd = IOL_MHRW_NONE;
-            break;
-         case IOL_MHRW_WRITEPARAM: // T13 response
-            DL_WriteParam_cnf (port, IOLINK_STATUS_NO_ERROR);
-            dl->message_handler.rwcmd = IOL_MHRW_NONE;
-            break;
-         default: // T14 response
-            break;
-         }
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: IDLE_1: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_isdu_h_sm_idle1 (port);
       break;
    case IOL_DL_ISDUH_ST_ISDUREQUEST_2:
-      if (
-         (dl->message_handler.rwcmd == IOL_MHRW_ISDUABORT) ||
-         (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST))
-      {
-         iolink_dl_isdu_h_sm_enter_isduerror4 (port); // T12 and T19
-      }
-      else if (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE)
-      {
-         OD_req (
-            dl,
-            IOLINK_RWDIRECTION_WRITE,
-            IOLINK_COMCHANNEL_ISDU,
-            dl->isdu_handler.current_isdu_seg % 16,
-            dl->message_handler.od_len,
-            &dl->isdu_handler.isdu_data
-                [dl->message_handler.od_len * dl->isdu_handler.current_isdu_seg]);
-         dl->isdu_handler.current_isdu_seg++; // T3
-      }
-      else if (dl->od_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE)
-      {
-         if (dl->isdu_handler.current_isdu_seg >= dl->isdu_handler.total_isdu_seg)
-         {
-            isdu_timer_start (dl);
-            dl->isdu_handler.current_isdu_seg = 0;
-            dl->isdu_handler.state = IOL_DL_ISDUH_ST_ISDUWAIT_3; // T4
-         }
-         else
-         {
-            // T3 response
-         }
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: IOL_DL_ISDUH_ST_ISDUREQUEST_2: unknown event triggered."
-            " Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_isdu_h_sm_isdu_request2 (port);
       break;
    case IOL_DL_ISDUH_ST_ISDUWAIT_3:
-      if (dl->message_handler.rwcmd == IOL_MHRW_ISDUABORT)
-      {
-         isdu_timer_reset (dl);
-         iolink_dl_isdu_h_sm_enter_isduerror4 (port); // T17
-      }
-      else if (isdu_timer_elapsed (dl) || (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST))
-      {
-         iolink_dl_isdu_h_sm_enter_isduerror4 (port); // T9
-      }
-      else if (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE)
-      {
-         OD_req (
-            dl,
-            IOLINK_RWDIRECTION_READ,
-            IOLINK_COMCHANNEL_ISDU,
-            IOLINK_FLOWCTRL_START,
-            dl->message_handler.od_len,
-            dl->isdu_handler.isdu_data); // T5
-         // T5
-      }
-      else if (dl->od_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE)
-      {
-         memcpy (
-            &dl->isdu_handler.isdu_data
-                [dl->isdu_handler.current_isdu_seg * dl->message_handler.od_len],
-            dl->rxbuffer,
-            dl->message_handler.od_len);
-
-         if (dl->isdu_handler.isdu_data[0] == ((IOL_ISERVICE_DEVICE_NO_SERVICE << 4) | 0x01))
-         {
-            // Device busy
-            // T5 response
-         }
-         else if (dl->isdu_handler.isdu_data[0] == 0)
-         {
-            // No service
-            LOG_INFO (IOLINK_DL_LOG, "%s: ISDUWait. No service!\n", __func__);
-            isdu_timer_reset (dl);
-            iolink_dl_isdu_h_sm_enter_isduerror4 (port); // T9
-         }
-         else
-         {
-            if (!valid_isdu_header (dl))
-            {
-               isdu_timer_reset (dl);
-               iolink_dl_isdu_h_sm_enter_isduerror4 (port); // T9
-            }
-            else
-            {
-               uint8_t isdu_total_len = 0;
-               get_isdu_total_len (dl, &isdu_total_len);
-               dl->isdu_handler.total_isdu_len   = isdu_total_len;
-               dl->isdu_handler.current_isdu_seg = 1;
-               dl->isdu_handler.total_isdu_seg   = get_isdu_total_segments (dl);
-
-               isdu_timer_reset (dl);
-
-               if (dl->isdu_handler.current_isdu_seg >= dl->isdu_handler.total_isdu_seg)
-               {
-                  iolink_dl_isdu_h_sm_reception_complete (port); // T6, T8
-               }
-               else
-               {
-                  dl->isdu_handler.state = IOL_DL_ISDUH_ST_ISDURESPONSE_5; // T6
-               }
-            }
-         }
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: IOL_DL_ISDUH_ST_ISDUWAIT_3: unknown event triggered."
-            " Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_isdu_h_sm_isdu_wait3 (port);
       break;
    case IOL_DL_ISDUH_ST_ISDUERROR_4:
-      iolink_dl_isdu_h_sm_isduerror4 (port);
+      iolink_dl_isdu_h_sm_isdu_error4 (port);
       break;
    case IOL_DL_ISDUH_ST_ISDURESPONSE_5:
-      if (
-         (dl->message_handler.rwcmd == IOL_MHRW_ISDUABORT) || // T18
-         (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST))  // T10
-      {
-         iolink_dl_isdu_h_sm_enter_isduerror4 (port);
-      }
-      else if (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE)
-      {
-         OD_req (
-            dl,
-            IOLINK_RWDIRECTION_READ,
-            IOLINK_COMCHANNEL_ISDU,
-            dl->isdu_handler.current_isdu_seg % 16,
-            dl->message_handler.od_len,
-            &dl->isdu_handler.isdu_data
-                [dl->message_handler.od_len * dl->isdu_handler.current_isdu_seg]);
-         // T7
-      }
-      else if (dl->od_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE)
-      {
-         uint8_t isdu_total_len = 0;
-         get_isdu_total_len (dl, &isdu_total_len);
-         dl->isdu_handler.total_isdu_len = isdu_total_len;
-         dl->isdu_handler.total_isdu_seg = get_isdu_total_segments (dl);
-         memcpy (
-            &dl->isdu_handler.isdu_data
-                [dl->isdu_handler.current_isdu_seg * dl->message_handler.od_len],
-            dl->rxbuffer,
-            dl->message_handler.od_len);
-         dl->isdu_handler.current_isdu_seg++; // T7 response
-
-         if (dl->isdu_handler.current_isdu_seg >= dl->isdu_handler.total_isdu_seg)
-         {
-            iolink_dl_isdu_h_sm_reception_complete (port);
-         }
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: IOL_DL_ISDUH_ST_ISDURESPONSE_5: unknown event triggered."
-            " Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_isdu_h_sm_isdu_response5 (port);
+      break;
+   default:
+      /* This should never happen */
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: Invalid state: %d:\n",
+         __func__,
+         dl->isdu_handler.state);
       break;
    }
 }
@@ -1789,7 +2133,346 @@ static void iolink_dl_cmd_h_sm (iolink_port_t * port)
       dl->cmd_handler.control_code = IOLINK_CONTROLCODE_NONE;
       dl->cmd_handler.state        = IOL_DL_CMDH_ST_IDLE_1; // T5
       break;
+   default:
+      /* This should never happen */
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_EVH_ST_IDLE_1: Invalid state: %d:\n",
+         __func__,
+         dl->cmd_handler.state);
+      break;
    }
+}
+
+static void iolink_dl_ev_h_sm_inactive0 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->event_handler.ehcmd == IOL_EHCMD_ACTIVE)
+   {
+      dl->event_handler.state = IOL_DL_EVH_ST_IDLE_1; // T1
+   }
+   else if (dl->event_handler.ehcmd != IOL_EHCMD_INACTIVE)
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_EVH_ST_IDLE_1: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_ev_h_sm_idle1 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->event_handler.ehcmd == IOL_EHCMD_INACTIVE)
+   {
+      dl->event_handler.state = IOL_DL_EVH_ST_INACTIVE_0; // T10
+   }
+   else if (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE)
+   {
+      if (dl->event_handler.event_confirmation)
+      {
+         LOG_DEBUG (
+            IOLINK_DL_LOG,
+            "%s: IOL_DL_EVH_ST_IDLE_1: Event confirmation.\n",
+            __func__);
+         dl->event_handler.state = IOL_DL_EVH_ST_EVENTCONFIRMATION_4; // T7
+
+         if (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST)
+         {
+            dl->event_handler.state = IOL_DL_EVH_ST_INACTIVE_0; // T9
+         }
+         else
+         {
+            LOG_DEBUG (
+               IOLINK_DL_LOG,
+               "%s: IOL_DL_EVH_ST_IDLE_1: Written %d to StatusCode.\n",
+               __func__,
+               dl->txbuffer[0]);
+            OD_req (
+               dl,
+               IOLINK_RWDIRECTION_WRITE,
+               IOLINK_COMCHANNEL_DIAGNOSIS,
+               0,
+               1,
+               dl->txbuffer);
+            dl->event_handler.event_confirmation = false;
+            dl->event_handler.state = IOL_DL_EVH_ST_IDLE_1; // T8
+         }
+      }
+      else
+      {
+         dl->event_handler.ev_addr     = 0;
+         dl->event_handler.num_entries = 0;
+         dl->event_handler.ev_current  = 0;
+         memset (
+            dl->event_handler.events,
+            0,
+            sizeof (event_t) * IOLINK_MAX_EVENTS);
+         OD_req (
+            dl,
+            IOLINK_RWDIRECTION_READ,
+            IOLINK_COMCHANNEL_DIAGNOSIS,
+            dl->event_handler.ev_addr,
+            0,
+            0);
+         dl->event_handler.state = IOL_DL_EVH_ST_READEVENT_2; // T2
+      }
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_EVH_ST_IDLE_1: unknown event triggered."
+         " Trigger: %d.\n",
+         __func__,
+         dl->od_handler.trigger);
+   }
+}
+
+static void iolink_dl_ev_h_sm_read_event2 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST)
+   {
+      dl->event_handler.state = IOL_DL_EVH_ST_INACTIVE_0; // T6
+   }
+   else if (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE) // T3
+   {
+      LOG_DEBUG (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_EVH_ST_READEVENT_2: Issue read address %d.\n",
+         __func__,
+         dl->event_handler.ev_addr);
+      OD_req (
+         dl,
+         IOLINK_RWDIRECTION_READ,
+         IOLINK_COMCHANNEL_DIAGNOSIS,
+         dl->event_handler.ev_addr,
+         0,
+         0);
+   }
+   else if (dl->od_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE) // T3
+   {
+      if (dl->event_handler.ev_addr == 0)
+      {
+         iolink_dl_ev_h_sm_read_event2_for_device_status_code (port);
+      }
+      else
+      {
+         iolink_dl_ev_h_sm_read_event2_for_device_event_memory_byte (port);
+      }
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_EVH_ST_READEVENT_2: unknown event triggered."
+         " Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_ev_h_sm_read_event2_for_device_status_code (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   dl->event_handler.status_code = dl->rxbuffer[0];
+
+   if (dl->event_handler.status_code & 0x80) // Details (StatusCode
+                                             // type 2)
+   {
+      LOG_DEBUG (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_EVH_ST_READEVENT_2: Read address %d.\n",
+         __func__,
+         dl->event_handler.ev_addr);
+      // Event details
+      for (dl->event_handler.ev_cnt = 0;
+            dl->event_handler.ev_cnt < IOLINK_MAX_EVENTS;
+            dl->event_handler.ev_cnt++)
+      {
+         if (dl->event_handler.status_code & (1 << dl->event_handler.ev_cnt))
+         {
+            dl->event_handler.num_entries++;
+
+            if (dl->event_handler.ev_addr == 0)
+            {
+               dl->event_handler.ev_addr =
+                  1 + dl->event_handler.ev_cnt * 3;
+            }
+         }
+      }
+      dl->event_handler.ev_cnt = (dl->event_handler.ev_addr - 1) / 3;
+   }
+   else // No details (StatusCode type 1)
+   {
+      LOG_DEBUG (
+         IOLINK_DL_LOG,
+         "%s: No details event (StatusCode: 0x%X)\n",
+         __func__,
+         dl->event_handler.status_code);
+
+      dl->pd_handler.pd_valid =
+         ((dl->event_handler.status_code & BIT (6)) == 0);
+
+      // Note: There are only 5 events for type 1
+      uint8_t i;
+      for (i = 0; i < IOLINK_MAX_EVENTS - 1; i++)
+      {
+         if ((dl->event_handler.status_code & BIT (i)) != 0)
+         {
+            dl->event_handler.num_entries++;
+         }
+      }
+
+      iolink_dl_ev_h_sm_signal_event3 (port);
+   }
+}
+
+static void iolink_dl_ev_h_sm_read_event2_for_device_event_memory_byte (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   switch (dl->event_handler.ev_addr - (dl->event_handler.ev_cnt * 3))
+   {
+   case 1:
+      LOG_DEBUG (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_EVH_ST_READEVENT_2: Read qualifier: %d\n",
+         __func__,
+         dl->rxbuffer[0]);
+      dl->event_handler.events[dl->event_handler.ev_current]
+         .event_qualifier = dl->rxbuffer[0];
+      dl->event_handler.ev_addr++;
+      break;
+   case 2:
+      LOG_DEBUG (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_EVH_ST_READEVENT_2: Read MSB: %d\n",
+         __func__,
+         dl->rxbuffer[0]);
+      dl->event_handler.events[dl->event_handler.ev_current]
+         .event_code_msb = dl->rxbuffer[0];
+      dl->event_handler.ev_addr++;
+      break;
+   case 3:
+      LOG_DEBUG (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_EVH_ST_READEVENT_2: Read LSB: %d\n",
+         __func__,
+         dl->rxbuffer[0]);
+      dl->event_handler.events[dl->event_handler.ev_current]
+         .event_code_lsb = dl->rxbuffer[0];
+      dl->event_handler.ev_current++;
+
+      while (dl->event_handler.ev_cnt < IOLINK_MAX_EVENTS)
+      {
+         dl->event_handler.ev_cnt++;
+
+         if (dl->event_handler.status_code & (1 << dl->event_handler.ev_cnt))
+         {
+            dl->event_handler.ev_addr = 1 + dl->event_handler.ev_cnt * 3;
+            break;
+         }
+      }
+
+      if (dl->event_handler.ev_cnt >= (IOLINK_MAX_EVENTS))
+      {
+         if (dl->event_handler.ev_current != dl->event_handler.num_entries)
+         {
+            LOG_ERROR (
+               IOLINK_DL_LOG,
+               "%s: IOL_DL_EVH_ST_READEVENT_2:"
+               " Mismatch between number of events indicated and "
+               "read. Port %d\n",
+               __func__,
+               iolink_get_portnumber (port));
+         }
+         dl->event_handler.ev_current = 0;
+
+         iolink_dl_ev_h_sm_signal_event3 (port);
+      }
+      break;
+   default:
+      /* This should never happen */
+      break;
+   }
+}
+
+static void iolink_dl_ev_h_sm_signal_event3 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   LOG_DEBUG (
+      IOLINK_DL_LOG,
+      "%s: IOL_DL_EVH_ST_READEVENT_2: Signal events\n",
+      __func__);
+   dl->event_handler.state = IOL_DL_EVH_ST_SIGNALEVENT_3; // T4
+
+   if (dl->event_handler.status_code & 0x80) // Details (StatusCode type 2)
+   {
+      for (dl->event_handler.ev_current = 0;
+            dl->event_handler.ev_current <
+            dl->event_handler.num_entries;
+            dl->event_handler.ev_current++)
+      {
+         event_t * event =
+            &dl->event_handler.events[dl->event_handler.ev_current];
+
+         DL_Event_ind (
+            port,
+            event->event_code_lsb + (event->event_code_msb << 8),
+            event->event_qualifier,
+            dl->event_handler.num_entries -
+               dl->event_handler.ev_current - 1);
+      }
+   }
+   else // No details (StatusCode type 1)
+   {
+      uint8_t i;
+      typedef struct
+      {
+         uint16_t code;
+         iolink_event_type_t type;
+      } event_info_t;
+
+      const event_info_t event_info[] = {
+         {0xFF80u, IOLINK_EVENT_TYPE_NOTIFICATION},
+         {0xFF80u, IOLINK_EVENT_TYPE_WARNING},
+         {0x6320u, IOLINK_EVENT_TYPE_ERROR},
+         {0xFF80u, IOLINK_EVENT_TYPE_ERROR},
+         {0xFF10u, IOLINK_EVENT_TYPE_ERROR}};
+
+      for (i = 0; i < (IOLINK_MAX_EVENTS - 1); i++)
+      {
+         if ((dl->event_handler.status_code & BIT (i)) != 0)
+         {
+            dl->event_handler.num_entries--;
+            uint8_t event_qualifier =
+               IOLINK_EVENT_INSTANCE_APPLICATION |
+               (IOLINK_EVENT_SOURCE_DEVICE << 3) |
+               (event_info[i].type << 4) |
+               (IOLINK_EVENT_MODE_SINGLE_SHOT << 6);
+            DL_Event_ind (
+               port,
+               event_info[i].code,
+               event_qualifier,
+               dl->event_handler.num_entries);
+         }
+      }
+   }
+
+   LOG_DEBUG (
+      IOLINK_DL_LOG,
+      "%s: IOL_DL_EVH_ST_READEVENT_2: Return to IDLE\n",
+      __func__);
+   dl->event_handler.event_confirmation = true;
+   dl->event_handler.state = IOL_DL_EVH_ST_IDLE_1; // T5
 }
 
 static void iolink_dl_ev_h_sm (iolink_port_t * port)
@@ -1799,293 +2482,13 @@ static void iolink_dl_ev_h_sm (iolink_port_t * port)
    switch (dl->event_handler.state)
    {
    case IOL_DL_EVH_ST_INACTIVE_0:
-      if (dl->event_handler.ehcmd == IOL_EHCMD_ACTIVE)
-      {
-         dl->event_handler.state = IOL_DL_EVH_ST_IDLE_1; // T1
-      }
-      else if (dl->event_handler.ehcmd != IOL_EHCMD_INACTIVE)
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: INACTIVE_0: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_ev_h_sm_inactive0 (port);
       break;
    case IOL_DL_EVH_ST_IDLE_1:
-      if (dl->event_handler.ehcmd == IOL_EHCMD_INACTIVE)
-      {
-         dl->event_handler.state = IOL_DL_EVH_ST_INACTIVE_0; // T10
-      }
-      else if (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE)
-      {
-         if (dl->event_handler.event_confirmation)
-         {
-            LOG_DEBUG (
-               IOLINK_DL_LOG,
-               "%s: IOL_DL_EVH_ST_IDLE_1: Event confirmation.\n",
-               __func__);
-            dl->event_handler.state = IOL_DL_EVH_ST_EVENTCONFIRMATION_4; // T7
-
-            if (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST)
-            {
-               dl->event_handler.state = IOL_DL_EVH_ST_INACTIVE_0; // T9
-            }
-            else
-            {
-               LOG_DEBUG (
-                  IOLINK_DL_LOG,
-                  "%s: IOL_DL_EVH_ST_IDLE_1: Written %d to StatusCode.\n",
-                  __func__,
-                  dl->txbuffer[0]);
-               OD_req (
-                  dl,
-                  IOLINK_RWDIRECTION_WRITE,
-                  IOLINK_COMCHANNEL_DIAGNOSIS,
-                  0,
-                  1,
-                  dl->txbuffer);
-               dl->event_handler.event_confirmation = false;
-               dl->event_handler.state = IOL_DL_EVH_ST_IDLE_1; // T8
-            }
-         }
-         else
-         {
-            dl->event_handler.ev_addr     = 0;
-            dl->event_handler.num_entries = 0;
-            dl->event_handler.ev_current  = 0;
-            memset (
-               dl->event_handler.events,
-               0,
-               sizeof (event_t) * IOLINK_MAX_EVENTS);
-            OD_req (
-               dl,
-               IOLINK_RWDIRECTION_READ,
-               IOLINK_COMCHANNEL_DIAGNOSIS,
-               dl->event_handler.ev_addr,
-               0,
-               0);
-            dl->event_handler.state = IOL_DL_EVH_ST_READEVENT_2; // T2
-         }
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: IOL_DL_EVH_ST_IDLE_1: unknown event triggered."
-            " Trigger: %d.\n",
-            __func__,
-            dl->od_handler.trigger);
-      }
+      iolink_dl_ev_h_sm_idle1 (port);
       break;
    case IOL_DL_EVH_ST_READEVENT_2:
-      if (dl->mode_handler.mhinfo == IOLINK_MHINFO_COMLOST)
-      {
-         dl->event_handler.state = IOL_DL_EVH_ST_INACTIVE_0; // T6
-      }
-      else if (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE) // T3
-      {
-         LOG_DEBUG (
-            IOLINK_DL_LOG,
-            "%s: IOL_DL_EVH_ST_READEVENT_2: Issue read address %d.\n",
-            __func__,
-            dl->event_handler.ev_addr);
-         OD_req (
-            dl,
-            IOLINK_RWDIRECTION_READ,
-            IOLINK_COMCHANNEL_DIAGNOSIS,
-            dl->event_handler.ev_addr,
-            0,
-            0);
-      }
-      else if (dl->od_handler.trigger == IOL_TRIGGERED_DEVICE_MESSAGE) // T3
-      {
-         if (dl->event_handler.ev_addr == 0)
-         {
-            dl->event_handler.status_code = dl->rxbuffer[0];
-
-            if (dl->event_handler.status_code & 0x80) // Details (StatusCode
-                                                      // type 2)
-            {
-               LOG_DEBUG (
-                  IOLINK_DL_LOG,
-                  "%s: IOL_DL_EVH_ST_READEVENT_2: Read address %d.\n",
-                  __func__,
-                  dl->event_handler.ev_addr);
-               // Event details
-               for (dl->event_handler.ev_cnt = 0;
-                    dl->event_handler.ev_cnt < IOLINK_MAX_EVENTS;
-                    dl->event_handler.ev_cnt++)
-               {
-                  if (dl->event_handler.status_code & (1 << dl->event_handler.ev_cnt))
-                  {
-                     dl->event_handler.num_entries++;
-
-                     if (dl->event_handler.ev_addr == 0)
-                     {
-                        dl->event_handler.ev_addr =
-                           1 + dl->event_handler.ev_cnt * 3;
-                     }
-                  }
-               }
-               dl->event_handler.ev_cnt = (dl->event_handler.ev_addr - 1) / 3;
-            }
-            else // No details (StatusCode type 1)
-            {
-               LOG_DEBUG (
-                  IOLINK_DL_LOG,
-                  "%s: No details event (StatusCode: 0x%X)\n",
-                  __func__,
-                  dl->event_handler.status_code);
-
-               dl->pd_handler.pd_valid =
-                  ((dl->event_handler.status_code & BIT (6)) == 0);
-
-               // Note: There are only 5 events for type 1
-               uint8_t i;
-               for (i = 0; i < IOLINK_MAX_EVENTS - 1; i++)
-               {
-                  if ((dl->event_handler.status_code & BIT (i)) != 0)
-                  {
-                     dl->event_handler.num_entries++;
-                  }
-               }
-
-               typedef struct
-               {
-                  uint16_t code;
-                  iolink_event_type_t type;
-               } event_info_t;
-
-               const event_info_t event_info[] = {
-                  {0xFF80, IOLINK_EVENT_TYPE_NOTIFICATION},
-                  {0xFF80, IOLINK_EVENT_TYPE_WARNING},
-                  {0x6320, IOLINK_EVENT_TYPE_ERROR},
-                  {0xFF80, IOLINK_EVENT_TYPE_ERROR},
-                  {0xFF10, IOLINK_EVENT_TYPE_ERROR}};
-
-               for (i = 0; i < IOLINK_MAX_EVENTS - 1; i++)
-               {
-                  if ((dl->event_handler.status_code & BIT (i)) != 0)
-                  {
-                     dl->event_handler.num_entries--;
-                     uint8_t event_qualifier =
-                        IOLINK_EVENT_INSTANCE_APPLICATION |
-                        (IOLINK_EVENT_SOURCE_DEVICE << 3) |
-                        (event_info[i].type << 4) |
-                        (IOLINK_EVENT_MODE_SINGLE_SHOT << 6);
-                     DL_Event_ind (
-                        port,
-                        event_info[i].code,
-                        event_qualifier,
-                        dl->event_handler.num_entries);
-                  }
-               }
-               dl->event_handler.event_confirmation = true;
-               dl->event_handler.state = IOL_DL_EVH_ST_IDLE_1; // T4 + T5
-            }
-         }
-         else
-         {
-            switch (dl->event_handler.ev_addr - (dl->event_handler.ev_cnt * 3))
-            {
-            case 1:
-               LOG_DEBUG (
-                  IOLINK_DL_LOG,
-                  "%s: IOL_DL_EVH_ST_READEVENT_2: Read qualifier: %d\n",
-                  __func__,
-                  dl->rxbuffer[0]);
-               dl->event_handler.events[dl->event_handler.ev_current]
-                  .event_qualifier = dl->rxbuffer[0];
-               dl->event_handler.ev_addr++;
-               break;
-            case 2:
-               LOG_DEBUG (
-                  IOLINK_DL_LOG,
-                  "%s: IOL_DL_EVH_ST_READEVENT_2: Read MSB: %d\n",
-                  __func__,
-                  dl->rxbuffer[0]);
-               dl->event_handler.events[dl->event_handler.ev_current]
-                  .event_code_msb = dl->rxbuffer[0];
-               dl->event_handler.ev_addr++;
-               break;
-            case 3:
-               LOG_DEBUG (
-                  IOLINK_DL_LOG,
-                  "%s: IOL_DL_EVH_ST_READEVENT_2: Read LSB: %d\n",
-                  __func__,
-                  dl->rxbuffer[0]);
-               dl->event_handler.events[dl->event_handler.ev_current]
-                  .event_code_lsb = dl->rxbuffer[0];
-               dl->event_handler.ev_current++;
-
-               while (dl->event_handler.ev_cnt < IOLINK_MAX_EVENTS)
-               {
-                  dl->event_handler.ev_cnt++;
-
-                  if (dl->event_handler.status_code & (1 << dl->event_handler.ev_cnt))
-                  {
-                     dl->event_handler.ev_addr = 1 + dl->event_handler.ev_cnt * 3;
-                     break;
-                  }
-               }
-
-               if (dl->event_handler.ev_cnt >= (IOLINK_MAX_EVENTS))
-               {
-                  LOG_DEBUG (
-                     IOLINK_DL_LOG,
-                     "%s: IOL_DL_EVH_ST_READEVENT_2: Signal events\n",
-                     __func__);
-                  dl->event_handler.state = IOL_DL_EVH_ST_SIGNALEVENT_3; // T4
-
-                  if (dl->event_handler.ev_current != dl->event_handler.num_entries)
-                  {
-                     LOG_ERROR (
-                        IOLINK_DL_LOG,
-                        "%s: IOL_DL_EVH_ST_READEVENT_2:"
-                        " Mismatch between number of events indicated and "
-                        "read. Port %d\n",
-                        __func__,
-                        iolink_get_portnumber (port));
-                  }
-                  dl->event_handler.ev_current = 0;
-
-                  for (dl->event_handler.ev_current = 0;
-                       dl->event_handler.ev_current <
-                       dl->event_handler.num_entries;
-                       dl->event_handler.ev_current++)
-                  {
-                     event_t * event =
-                        &dl->event_handler.events[dl->event_handler.ev_current];
-
-                     DL_Event_ind (
-                        port,
-                        event->event_code_lsb + (event->event_code_msb << 8),
-                        event->event_qualifier,
-                        dl->event_handler.num_entries -
-                           dl->event_handler.ev_current - 1);
-                  }
-
-                  LOG_DEBUG (
-                     IOLINK_DL_LOG,
-                     "%s: IOL_DL_EVH_ST_READEVENT_2: Return to IDLE\n",
-                     __func__);
-                  dl->event_handler.event_confirmation = true;
-                  dl->event_handler.state = IOL_DL_EVH_ST_IDLE_1; // T5
-               }
-               break;
-            }
-         }
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: IOL_DL_EVH_ST_READEVENT_2: unknown event triggered."
-            " Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_ev_h_sm_read_event2 (port);
       break;
    case IOL_DL_EVH_ST_SIGNALEVENT_3:
    case IOL_DL_EVH_ST_EVENTCONFIRMATION_4:
@@ -2098,6 +2501,144 @@ static void iolink_dl_ev_h_sm (iolink_port_t * port)
             ? "SIGNALEVENT_3"
             : "EVENTCONFIRMATION_4");
       break;
+   default:
+      /* This should never happen */
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: Invalid state: %d:\n",
+         __func__,
+         dl->event_handler.state);
+      break;
+   }
+}
+
+static void iolink_dl_od_h_sm_inactive0 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->od_handler.ohcmd == IOL_OHCMD_ACTIVE)
+   {
+      dl->od_handler.state = IOL_DL_ODH_ST_ISDU_1; // T1
+   }
+   else if (dl->od_handler.ohcmd != IOL_OHCMD_INACTIVE)
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: INACTIVE_0: unknown event triggered. Port %d\n",
+         __func__,
+         iolink_get_portnumber (port));
+   }
+}
+
+static void iolink_dl_od_h_sm_isdu1 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->od_handler.ohcmd == IOL_OHCMD_INACTIVE)
+   {
+      dl->od_handler.state = IOL_DL_ODH_ST_INACTIVE_0; // T13
+   }
+   else if (
+      (dl->cmd_handler.control_code != IOLINK_CONTROLCODE_NONE) &&
+      (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE))
+   {
+      iolink_dl_cmd_h_sm (port);
+      dl->od_handler.state = IOL_DL_ODH_ST_COMMAND_2; // T3
+   }
+   else if (dl->event_handler.event_flag)
+   {
+      iolink_dl_isdu_h_sm (port);
+      dl->od_handler.state = IOL_DL_ODH_ST_EVENT_3; // T5
+   }
+   else if (dl->od_handler.trigger != IOL_TRIGGERED_NONE) // T2
+   {
+      iolink_dl_isdu_h_sm (port);
+      dl->od_handler.trigger = IOL_TRIGGERED_NONE;
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_ODH_ST_ISDU_1: unknown event triggered. Trigger: %d.\n",
+         __func__,
+         dl->od_handler.trigger);
+   }
+}
+
+static void iolink_dl_od_h_sm_command2 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->od_handler.ohcmd == IOL_OHCMD_INACTIVE)
+   {
+      dl->cmd_handler.state = IOL_DL_CMDH_ST_INACTIVE_0; // T11
+   }
+   else if (dl->od_handler.trigger != IOL_TRIGGERED_NONE) // T9
+   {
+      dl->od_handler.trigger = IOL_TRIGGERED_NONE;
+
+      if (dl->cmd_handler.control_code == IOLINK_CONTROLCODE_NONE)
+      {
+         write_master_command (port, IOLINK_STATUS_NO_ERROR);
+
+         if (dl->event_handler.event_flag)
+         {
+            dl->od_handler.state = IOL_DL_ODH_ST_EVENT_3; // T8
+         }
+         else
+         {
+            dl->od_handler.state = IOL_DL_ODH_ST_ISDU_1; // T4
+         }
+      }
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_ODH_ST_COMMAND_2: unknown event triggered. Trigger: "
+         "%d.\n",
+         __func__,
+         dl->od_handler.trigger);
+   }
+}
+
+static void iolink_dl_od_h_sm_event3 (iolink_port_t * port)
+{
+   iolink_dl_t * dl = iolink_get_dl_ctx (port);
+
+   if (dl->od_handler.ohcmd == IOL_OHCMD_INACTIVE)
+   {
+      dl->od_handler.state = IOL_DL_ODH_ST_INACTIVE_0; // T12
+   }
+   else if (
+      (dl->cmd_handler.control_code != IOLINK_CONTROLCODE_NONE) &&
+      (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE))
+   {
+      iolink_dl_cmd_h_sm (port);
+      dl->od_handler.state = IOL_DL_ODH_ST_COMMAND_2; // T7
+   }
+   else if (!dl->event_handler.event_flag)
+   {
+      LOG_DEBUG (
+         IOLINK_DL_LOG,
+         "%s: Event ended. Back to ISDU. Trigger: %d\n",
+         __func__,
+         dl->od_handler.trigger);
+      dl->od_handler.state = IOL_DL_ODH_ST_ISDU_1; // T6
+   }
+   else if (dl->od_handler.trigger != IOL_TRIGGERED_NONE) // T10
+   {
+      iolink_dl_ev_h_sm (port);
+      dl->od_handler.trigger = IOL_TRIGGERED_NONE;
+   }
+   else
+   {
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: IOL_DL_ODH_ST_EVENT_3: unknown event triggered. Trigger: "
+         "%d.\n",
+         __func__,
+         dl->od_handler.trigger);
    }
 }
 
@@ -2108,118 +2649,24 @@ static void iolink_dl_od_h_sm (iolink_port_t * port)
    switch (dl->od_handler.state)
    {
    case IOL_DL_ODH_ST_INACTIVE_0:
-      if (dl->od_handler.ohcmd == IOL_OHCMD_ACTIVE)
-      {
-         dl->od_handler.state = IOL_DL_ODH_ST_ISDU_1; // T1
-      }
-      else if (dl->od_handler.ohcmd != IOL_OHCMD_INACTIVE)
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: INACTIVE_0: unknown event triggered. Port %d\n",
-            __func__,
-            iolink_get_portnumber (port));
-      }
+      iolink_dl_od_h_sm_inactive0 (port);
       break;
    case IOL_DL_ODH_ST_ISDU_1:
-      if (dl->od_handler.ohcmd == IOL_OHCMD_INACTIVE)
-      {
-         dl->od_handler.state = IOL_DL_ODH_ST_INACTIVE_0; // T13
-      }
-      else if (
-         (dl->cmd_handler.control_code != IOLINK_CONTROLCODE_NONE) &&
-         (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE))
-      {
-         iolink_dl_cmd_h_sm (port);
-         dl->od_handler.state = IOL_DL_ODH_ST_COMMAND_2; // T3
-      }
-      else if (dl->event_handler.event_flag)
-      {
-         iolink_dl_isdu_h_sm (port);
-         dl->od_handler.state = IOL_DL_ODH_ST_EVENT_3; // T5
-      }
-      else if (dl->od_handler.trigger != IOL_TRIGGERED_NONE) // T2
-      {
-         iolink_dl_isdu_h_sm (port);
-         dl->od_handler.trigger = IOL_TRIGGERED_NONE;
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: IOL_DL_ODH_ST_ISDU_1: unknown event triggered. Trigger: %d.\n",
-            __func__,
-            dl->od_handler.trigger);
-      }
+      iolink_dl_od_h_sm_isdu1 (port);
       break;
    case IOL_DL_ODH_ST_COMMAND_2:
-      if (dl->od_handler.ohcmd == IOL_OHCMD_INACTIVE)
-      {
-         dl->cmd_handler.state = IOL_DL_CMDH_ST_INACTIVE_0; // T11
-      }
-      else if (dl->od_handler.trigger != IOL_TRIGGERED_NONE) // T9
-      {
-         dl->od_handler.trigger = IOL_TRIGGERED_NONE;
-
-         if (dl->cmd_handler.control_code == IOLINK_CONTROLCODE_NONE)
-         {
-            write_master_command (port, IOLINK_STATUS_NO_ERROR);
-
-            if (dl->event_handler.event_flag)
-            {
-               dl->od_handler.state = IOL_DL_ODH_ST_EVENT_3; // T8
-            }
-            else
-            {
-               dl->od_handler.state = IOL_DL_ODH_ST_ISDU_1; // T4
-            }
-         }
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: IOL_DL_ODH_ST_COMMAND_2: unknown event triggered. Trigger: "
-            "%d.\n",
-            __func__,
-            dl->od_handler.trigger);
-      }
+      iolink_dl_od_h_sm_command2 (port);
       break;
    case IOL_DL_ODH_ST_EVENT_3:
-      if (dl->od_handler.ohcmd == IOL_OHCMD_INACTIVE)
-      {
-         dl->od_handler.state = IOL_DL_ODH_ST_INACTIVE_0; // T12
-      }
-      else if (
-         (dl->cmd_handler.control_code != IOLINK_CONTROLCODE_NONE) &&
-         (dl->od_handler.trigger == IOL_TRIGGERED_MASTER_MESSAGE))
-      {
-         iolink_dl_cmd_h_sm (port);
-         dl->od_handler.state = IOL_DL_ODH_ST_COMMAND_2; // T7
-      }
-      else if (!dl->event_handler.event_flag)
-      {
-         LOG_DEBUG (
-            IOLINK_DL_LOG,
-            "%s: Event ended. Back to ISDU. Trigger: %d\n",
-            __func__,
-            dl->od_handler.trigger);
-         dl->od_handler.state = IOL_DL_ODH_ST_ISDU_1; // T6
-      }
-      else if (dl->od_handler.trigger != IOL_TRIGGERED_NONE) // T10
-      {
-         iolink_dl_ev_h_sm (port);
-         dl->od_handler.trigger = IOL_TRIGGERED_NONE;
-      }
-      else
-      {
-         LOG_ERROR (
-            IOLINK_DL_LOG,
-            "%s: IOL_DL_ODH_ST_EVENT_3: unknown event triggered. Trigger: "
-            "%d.\n",
-            __func__,
-            dl->od_handler.trigger);
-      }
+      iolink_dl_od_h_sm_event3 (port);
+      break;
+   default:
+      /* This should never happen */
+      LOG_ERROR (
+         IOLINK_DL_LOG,
+         "%s: Invalid state: %d:\n",
+         __func__,
+         dl->od_handler.state);
       break;
    }
 }
@@ -2527,7 +2974,7 @@ iolink_error_t DL_SetMode_req (
 
 static iolink_error_t DL_ReadWriteParam_req (
    iolink_port_t * port,
-   uint8_t address,
+   uint16_t address,
    uint8_t value,
    bool write)
 {
@@ -2597,12 +3044,12 @@ static iolink_error_t DL_ReadWriteParam_req (
    return IOLINK_ERROR_NONE;
 }
 
-iolink_error_t DL_ReadParam_req (iolink_port_t * port, uint8_t address)
+iolink_error_t DL_ReadParam_req (iolink_port_t * port, uint16_t address)
 {
    return DL_ReadWriteParam_req (port, address, 0, false);
 }
 
-iolink_error_t DL_WriteParam_req (iolink_port_t * port, uint8_t address, uint8_t value)
+iolink_error_t DL_WriteParam_req (iolink_port_t * port, uint16_t address, uint8_t value)
 {
    return DL_ReadWriteParam_req (port, address, value, true);
 }
@@ -2878,7 +3325,7 @@ static void dl_timer_tcyc_timeout (os_timer_t * timer, void * arg)
    os_event_set (dl->event, IOLINK_DL_EVENT_TIMEOUT_TCYC);
 }
 
-static inline void iolink_dl_wurq_recv (iolink_port_t * port)
+static void iolink_dl_wurq_recv (iolink_port_t * port)
 {
    iolink_dl_t * dl = iolink_get_dl_ctx (port);
    dl->baudrate     = iolink_pl_get_baudrate (port);
@@ -2928,7 +3375,7 @@ static inline void iolink_dl_wurq_recv (iolink_port_t * port)
    os_event_set (dl->event, IOLINK_DL_EVENT_MH);
 }
 
-static inline void iolink_dl_handle_error (iolink_port_t * port)
+static void iolink_dl_handle_error (iolink_port_t * port)
 {
 #if IOLINK_HW == IOLINK_HW_MAX14819
    iolink_dl_t * dl = iolink_get_dl_ctx (port);
@@ -3094,7 +3541,6 @@ void iolink_dl_reset (iolink_port_t * port)
  */
 void iolink_dl_instantiate (
    iolink_port_t * port,
-   const iolink_port_cfg_t * port_cfg,
    unsigned int thread_prio,
    size_t thread_stack_size)
 {

@@ -33,14 +33,14 @@ class CMTest : public TestBase
    };
 };
 
-static inline iolink_cm_state_t cm_get_state (iolink_port_t * port)
+static iolink_cm_state_t cm_get_state (iolink_port_t * port)
 {
    iolink_cm_port_t * cm = iolink_get_cm_ctx (port);
 
    return cm->state;
 }
 
-static inline void cm_verify_paraml (
+static void cm_verify_paraml (
    uint8_t exp_cycletime,
    iolink_sm_target_mode_t exp_mode,
    uint8_t exp_revisionid,
@@ -56,7 +56,7 @@ static inline void cm_verify_paraml (
    EXPECT_EQ (exp_deviceid, mock_iolink_cfg_paraml.deviceid);
 }
 
-static inline void cm_verify_mock_cnt (
+static void cm_verify_mock_cnt (
    uint8_t exp_sm_operate_cnt,
    uint8_t exp_ds_startup_cnt,
    uint8_t exp_ds_delete_cnt,
@@ -74,16 +74,16 @@ static inline void cm_verify_mock_cnt (
    EXPECT_EQ (mock_iolink_pd_stop_cnt, exp_pd_stop_cnt);
 }
 
-static inline void cm_verify_smi_portcfg_cnf (uint8_t exp_smi_portcfg_cnf_cnt)
+static void cm_verify_smi_portcfg_cnf (uint8_t exp_smi_portcfg_cnf_cnt)
 {
    EXPECT_EQ (exp_smi_portcfg_cnf_cnt, mock_iolink_smi_portcfg_cnf_cnt);
    EXPECT_EQ (IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST, mock_iolink_smi_ref_arg_block_id);
    iolink_arg_block_id_t arg_block_id =
-      mock_iolink_smi_arg_block->void_block.arg_block_id;
+      mock_iolink_smi_arg_block->id;
    EXPECT_EQ (arg_block_id, IOLINK_ARG_BLOCK_ID_VOID_BLOCK);
 }
 
-static inline void cm_verify_smi_err (
+static void cm_verify_smi_err (
    iolink_arg_block_id_t exp_smi_ref_arg_id,
    iolink_arg_block_id_t exp_smi_exp_arg_id,
    iolink_smi_errortypes_t exp_errortype,
@@ -97,7 +97,7 @@ static inline void cm_verify_smi_err (
    EXPECT_EQ (exp_smi_ref_arg_id, mock_iolink_smi_ref_arg_block_id);
 
    iolink_arg_block_id_t arg_block_id =
-      mock_iolink_smi_arg_block->void_block.arg_block_id;
+      mock_iolink_smi_arg_block->id;
 
    EXPECT_EQ (IOLINK_ARG_BLOCK_ID_JOB_ERROR, arg_block_id);
 
@@ -113,7 +113,7 @@ static inline void cm_verify_smi_err (
    }
 }
 
-static inline void cm_verify_smi_masterident (
+static void cm_verify_smi_masterident (
    iolink_arg_block_id_t exp_ref_arg_id,
    iolink_arg_block_id_t exp_exp_arg_id,
    uint16_t exp_vendorid,
@@ -128,7 +128,7 @@ static inline void cm_verify_smi_masterident (
    EXPECT_EQ (exp_smi_joberror_cnt, mock_iolink_smi_joberror_cnt);
 
    EXPECT_EQ (exp_exp_arg_id, IOLINK_ARG_BLOCK_ID_MASTERIDENT);
-   if (mock_iolink_smi_arg_block->void_block.arg_block_id == IOLINK_ARG_BLOCK_ID_MASTERIDENT)
+   if (mock_iolink_smi_arg_block->id == IOLINK_ARG_BLOCK_ID_MASTERIDENT)
    {
       int i;
       arg_block_masterident_t * masterident =
@@ -157,7 +157,7 @@ static inline void cm_verify_smi_masterident (
    }
 }
 
-static inline void cm_verify_smi_portconfig (
+static void cm_verify_smi_portconfig (
    iolink_port_t * port,
    portconfiglist_t * exp_configlist)
 {
@@ -168,7 +168,7 @@ static inline void cm_verify_smi_portconfig (
    uint8_t exp_smi_cnf_cnt      = mock_iolink_smi_cnf_cnt;
    uint8_t exp_smi_joberror_cnt = mock_iolink_smi_joberror_cnt;
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = arg_block_id;
+   arg_block_void.arg_block.id = arg_block_id;
 
    /* SMI_ReadbackPortConfiguration_req() */
    EXPECT_EQ (
@@ -184,11 +184,11 @@ static inline void cm_verify_smi_portconfig (
    EXPECT_EQ (exp_smi_cnf_cnt, mock_iolink_smi_cnf_cnt);
    EXPECT_EQ (exp_smi_joberror_cnt, mock_iolink_smi_joberror_cnt);
 
-   arg_block_id = mock_iolink_smi_arg_block->void_block.arg_block_id;
+   arg_block_id = mock_iolink_smi_arg_block->id;
 
    EXPECT_EQ (exp_exp_arg_id, arg_block_id);
 
-   if (mock_iolink_smi_arg_block->void_block.arg_block_id == IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST)
+   if (mock_iolink_smi_arg_block->id == IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST)
    {
       arg_block_portconfiglist_t * arg_block_portcfg =
          (arg_block_portconfiglist_t *)mock_iolink_smi_arg_block;
@@ -202,7 +202,7 @@ static inline void cm_verify_smi_portconfig (
    }
 }
 
-static inline void cm_verify_portstatus (
+static void cm_verify_portstatus (
    iolink_port_t * port,
    iolink_port_status_info_t exp_port_status,
    uint8_t exp_port_quality_info,
@@ -221,7 +221,7 @@ static inline void cm_verify_portstatus (
    uint8_t exp_smi_portstatus_cnf_cnt = mock_iolink_smi_portstatus_cnf_cnt + 1;
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = exp_ref_arg_block_id;
+   arg_block_void.arg_block.id = exp_ref_arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_NONE,
@@ -236,10 +236,10 @@ static inline void cm_verify_portstatus (
    EXPECT_EQ (exp_ref_arg_block_id, mock_iolink_smi_ref_arg_block_id);
 
    iolink_arg_block_id_t arg_block_id =
-      mock_iolink_smi_arg_block->void_block.arg_block_id;
+      mock_iolink_smi_arg_block->id;
    EXPECT_EQ (exp_exp_arg_block_id, arg_block_id);
 
-   if (exp_exp_arg_block_id == mock_iolink_smi_arg_block->void_block.arg_block_id)
+   if (exp_exp_arg_block_id == mock_iolink_smi_arg_block->id)
    {
       arg_block_portstatuslist_t * port_status_list =
          (arg_block_portstatuslist_t *)mock_iolink_smi_arg_block;
@@ -255,7 +255,7 @@ static inline void cm_verify_portstatus (
    }
 }
 
-static inline void cm_x_to_dido (
+static void cm_x_to_dido (
    iolink_port_t * port,
    iolink_cm_state_t exp_state,
    bool is_do)
@@ -286,7 +286,7 @@ static inline void cm_x_to_dido (
    iolink_sm_portmode_t portmode;
 
    memset (&port_cfg, 0, sizeof (arg_block_portconfiglist_t));
-   port_cfg.arg_block_id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
+   port_cfg.arg_block.id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
    port_cfg.configlist.port_cycle_time   = exp_port_cycle_time;
    port_cfg.configlist.vendorid          = exp_vendorid;
    port_cfg.configlist.deviceid          = exp_deviceid;
@@ -354,12 +354,12 @@ static inline void cm_x_to_dido (
       exp_pd_stop_cnt);
 }
 
-static inline void cm_deactive_to_dido (iolink_port_t * port, bool is_do)
+static void cm_deactive_to_dido (iolink_port_t * port, bool is_do)
 {
    cm_x_to_dido (port, CM_STATE_Port_Deactivated, is_do);
 }
 
-static inline void cm_deactive_to_startup (
+static void cm_deactive_to_startup (
    iolink_port_t * port,
    iolink_portmode_t mode,
    iolink_validation_check_t validation)
@@ -389,7 +389,7 @@ static inline void cm_deactive_to_startup (
    uint8_t exp_pd_stop_cnt         = mock_iolink_pd_stop_cnt + 1;
 
    memset (&port_cfg, 0, sizeof (arg_block_portconfiglist_t));
-   port_cfg.arg_block_id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
+   port_cfg.arg_block.id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
    port_cfg.configlist.port_cycle_time   = exp_port_cycle_time;
    port_cfg.configlist.vendorid          = exp_vendorid;
    port_cfg.configlist.deviceid          = exp_deviceid;
@@ -467,7 +467,7 @@ static inline void cm_deactive_to_startup (
       exp_pd_stop_cnt);
 }
 
-static inline void cm_startup_to_ds_parammanager (iolink_port_t * port)
+static void cm_startup_to_ds_parammanager (iolink_port_t * port)
 {
    iolink_port_status_info_t exp_status_info = IOLINK_PORT_STATUS_INFO_PREOP;
    uint8_t exp_port_quality_info             = IOLINK_PORT_QUALITY_INFO_INVALID;
@@ -511,7 +511,7 @@ static inline void cm_startup_to_ds_parammanager (iolink_port_t * port)
       exp_pd_stop_cnt);
 }
 
-static inline void cm_deactive_to_ds_parammanager (iolink_port_t * port)
+static void cm_deactive_to_ds_parammanager (iolink_port_t * port)
 {
    cm_deactive_to_startup (
       port,
@@ -520,7 +520,7 @@ static inline void cm_deactive_to_ds_parammanager (iolink_port_t * port)
    cm_startup_to_ds_parammanager (port);
 }
 
-static inline void cm_startup_to_sm_port_fault (
+static void cm_startup_to_sm_port_fault (
    iolink_port_t * port,
    iolink_sm_portmode_t mode,
    uint8_t exp_port_cycle_time)
@@ -566,7 +566,7 @@ static inline void cm_startup_to_sm_port_fault (
       exp_pd_stop_cnt);
 }
 
-static inline void cm_deactive_to_sm_port_fault (
+static void cm_deactive_to_sm_port_fault (
    iolink_port_t * port,
    iolink_sm_portmode_t mode)
 {
@@ -577,7 +577,7 @@ static inline void cm_deactive_to_sm_port_fault (
    cm_startup_to_sm_port_fault (port, mode, 0);
 }
 
-static inline void cm_x_to_waiting_on_op (
+static void cm_x_to_waiting_on_op (
    iolink_port_t * port,
    iolink_cm_state_t exp_state)
 {
@@ -621,17 +621,17 @@ static inline void cm_x_to_waiting_on_op (
       exp_pd_stop_cnt);
 }
 
-static inline void cm_startup_to_waiting_on_op (iolink_port_t * port)
+static void cm_startup_to_waiting_on_op (iolink_port_t * port)
 {
    cm_x_to_waiting_on_op (port, CM_STATE_SM_Startup);
 }
 
-static inline void cm_deactive_to_waiting_on_op (iolink_port_t * port)
+static void cm_deactive_to_waiting_on_op (iolink_port_t * port)
 {
    cm_x_to_waiting_on_op (port, CM_STATE_Port_Deactivated);
 }
 
-static inline void cm_x_to_port_active (
+static void cm_x_to_port_active (
    iolink_port_t * port,
    iolink_cm_state_t exp_state)
 {
@@ -682,13 +682,15 @@ static inline void cm_x_to_port_active (
    EXPECT_EQ (IOLINK_ARG_BLOCK_ID_VOID_BLOCK, mock_iolink_smi_ref_arg_block_id);
 
    iolink_arg_block_id_t arg_block_id =
-      mock_iolink_smi_arg_block->void_block.arg_block_id;
+      mock_iolink_smi_arg_block->id;
    EXPECT_EQ (arg_block_id, IOLINK_ARG_BLOCK_ID_PORT_EVENT);
 
-   if (mock_iolink_smi_arg_block->void_block.arg_block_id == IOLINK_ARG_BLOCK_ID_PORT_EVENT)
+   if (mock_iolink_smi_arg_block->id == IOLINK_ARG_BLOCK_ID_PORT_EVENT)
    {
+      arg_block_portevent_t * arg_block_port_event =
+         (arg_block_portevent_t *)mock_iolink_smi_arg_block;
       iolink_eventcode_t event_code =
-         mock_iolink_smi_arg_block->port_event.event.event_code;
+         arg_block_port_event->event.event_code;
 
       EXPECT_EQ (exp_smi_portevent_code, event_code);
    }
@@ -714,17 +716,17 @@ static inline void cm_x_to_port_active (
       exp_pd_stop_cnt);
 }
 
-static inline void cm_startup_to_port_active (iolink_port_t * port)
+static void cm_startup_to_port_active (iolink_port_t * port)
 {
    cm_x_to_port_active (port, CM_STATE_SM_Startup);
 }
 
-static inline void cm_deactive_to_port_active (iolink_port_t * port)
+static void cm_deactive_to_port_active (iolink_port_t * port)
 {
    cm_x_to_port_active (port, CM_STATE_Port_Deactivated);
 }
 
-static inline void cm_x_to_deactive (iolink_port_t * port, iolink_cm_state_t exp_state)
+static void cm_x_to_deactive (iolink_port_t * port, iolink_cm_state_t exp_state)
 {
    arg_block_portconfiglist_t port_cfg;
 
@@ -752,7 +754,7 @@ static inline void cm_x_to_deactive (iolink_port_t * port, iolink_cm_state_t exp
    uint8_t exp_smi_portevent_ind_cnt = mock_iolink_smi_portevent_ind_cnt;
 
    memset (&port_cfg, 0, sizeof (arg_block_portconfiglist_t));
-   port_cfg.arg_block_id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
+   port_cfg.arg_block.id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
    port_cfg.configlist.port_cycle_time   = exp_port_cycle_time;
    port_cfg.configlist.vendorid          = exp_vendorid;
    port_cfg.configlist.deviceid          = exp_deviceid;
@@ -807,7 +809,7 @@ static inline void cm_x_to_deactive (iolink_port_t * port, iolink_cm_state_t exp
    EXPECT_EQ (exp_smi_portevent_ind_cnt, mock_iolink_smi_portevent_ind_cnt);
 }
 
-static inline void cm_check_mode_to_startup (
+static void cm_check_mode_to_startup (
    iolink_port_t * port,
    iolink_portmode_t mode,
    iolink_validation_check_t validation)
@@ -816,7 +818,7 @@ static inline void cm_check_mode_to_startup (
    cm_deactive_to_startup (port, mode, validation);
 }
 
-static inline void cm_all_portconfiguration (iolink_port_t * port)
+static void cm_all_portconfiguration (iolink_port_t * port)
 {
    arg_block_portconfiglist_t port_cfg;
 
@@ -834,7 +836,7 @@ static inline void cm_all_portconfiguration (iolink_port_t * port)
    uint8_t exp_smi_portcfg_cnf_cnt = mock_iolink_smi_portcfg_cnf_cnt;
 
    memset (&port_cfg, 0, sizeof (arg_block_portconfiglist_t));
-   port_cfg.arg_block_id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
+   port_cfg.arg_block.id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
    port_cfg.configlist.port_cycle_time   = exp_port_cycle_time;
    port_cfg.configlist.vendorid          = exp_vendorid;
    port_cfg.configlist.deviceid          = exp_deviceid;
@@ -1414,7 +1416,7 @@ TEST_F (CMTest, Cm_SMI_PortConfig_unknown_portmode)
    uint8_t exp_smi_joberror_cnt = mock_iolink_smi_joberror_cnt + 1;
 
    memset (&port_cfg, 0, sizeof (arg_block_portconfiglist_t));
-   port_cfg.arg_block_id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
+   port_cfg.arg_block.id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
    port_cfg.configlist.port_cycle_time   = exp_port_cycle_time;
    port_cfg.configlist.vendorid          = exp_vendorid;
    port_cfg.configlist.deviceid          = exp_deviceid;
@@ -1490,7 +1492,7 @@ TEST_F (CMTest, Cm_SMI_PortConfig_unknown_validation_backup)
    uint8_t exp_smi_joberror_cnt = mock_iolink_smi_joberror_cnt + 1;
 
    memset (&port_cfg, 0, sizeof (arg_block_portconfiglist_t));
-   port_cfg.arg_block_id               = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
+   port_cfg.arg_block.id               = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
    port_cfg.configlist.port_cycle_time = exp_port_cycle_time;
    port_cfg.configlist.vendorid        = exp_vendorid;
    port_cfg.configlist.deviceid        = exp_deviceid;
@@ -1565,7 +1567,7 @@ TEST_F (CMTest, Cm_SMI_PortConfig_unknown_iq_behavior)
    uint8_t exp_smi_joberror_cnt = mock_iolink_smi_joberror_cnt + 1;
 
    memset (&port_cfg, 0, sizeof (arg_block_portconfiglist_t));
-   port_cfg.arg_block_id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
+   port_cfg.arg_block.id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
    port_cfg.configlist.port_cycle_time   = exp_port_cycle_time;
    port_cfg.configlist.vendorid          = exp_vendorid;
    port_cfg.configlist.deviceid          = exp_deviceid;
@@ -1671,7 +1673,7 @@ TEST_F (CMTest, Cm_SMI_PortConfig_bad_argblock)
    port_cfg.configlist.iq_behavior       = IOLINK_IQ_BEHAVIOR_NO_SUPPORT;
 
    /* Bad ArgBlockID */
-   port_cfg.arg_block_id = bad_arg_block_id;
+   port_cfg.arg_block.id = bad_arg_block_id;
 
    EXPECT_EQ (CM_STATE_Port_Deactivated, cm_get_state (port));
    EXPECT_EQ (
@@ -1738,7 +1740,7 @@ TEST_F (CMTest, Cm_SMI_PortConfig_bad_exp_arg_block_id)
    port_cfg.configlist.validation_backup = IOLINK_VALIDATION_CHECK_NO;
    port_cfg.configlist.iq_behavior       = IOLINK_IQ_BEHAVIOR_NO_SUPPORT;
 
-   port_cfg.arg_block_id = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
+   port_cfg.arg_block.id = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
 
    EXPECT_EQ (CM_STATE_Port_Deactivated, cm_get_state (port));
    EXPECT_EQ (
@@ -1796,7 +1798,7 @@ TEST_F (CMTest, Cm_SMI_PortConfig_bad_argblock_len)
    uint8_t exp_smi_joberror_cnt = mock_iolink_smi_joberror_cnt + 1;
 
    memset (&port_cfg, 0, sizeof (arg_block_portconfiglist_t));
-   port_cfg.arg_block_id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
+   port_cfg.arg_block.id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
    port_cfg.configlist.port_cycle_time   = exp_port_cycle_time;
    port_cfg.configlist.vendorid          = exp_vendorid;
    port_cfg.configlist.deviceid          = exp_deviceid;
@@ -1850,7 +1852,7 @@ TEST_F (CMTest, Cm_SMI_PortStatus_bad_argblock)
    iolink_arg_block_id_t exp_arg_block_id = IOLINK_ARG_BLOCK_ID_PORT_STATUS_LIST;
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = bad_arg_block_id;
+   arg_block_void.arg_block.id = bad_arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_NONE,
@@ -1879,7 +1881,7 @@ TEST_F (CMTest, Cm_SMI_PortStatus_bad_argblock_len)
    iolink_arg_block_id_t exp_arg_block_id = IOLINK_ARG_BLOCK_ID_PORT_STATUS_LIST;
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = arg_block_id;
+   arg_block_void.arg_block.id = arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_NONE,
@@ -1915,7 +1917,7 @@ TEST_F (CMTest, Cm_SMI_MasterIdent)
    iolink_arg_block_id_t exp_arg_block_id = IOLINK_ARG_BLOCK_ID_MASTERIDENT;
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = arg_block_id;
+   arg_block_void.arg_block.id = arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_NONE,
@@ -1947,7 +1949,7 @@ TEST_F (CMTest, Cm_SMI_MasterIdent_bad_argblock)
    iolink_arg_block_id_t exp_arg_block_id = IOLINK_ARG_BLOCK_ID_MASTERIDENT;
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = bad_arg_block_id;
+   arg_block_void.arg_block.id = bad_arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_NONE,
@@ -1976,7 +1978,7 @@ TEST_F (CMTest, Cm_SMI_MasterIdent_bad_argblock_len)
    iolink_arg_block_id_t exp_arg_block_id = IOLINK_ARG_BLOCK_ID_MASTERIDENT;
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = arg_block_id;
+   arg_block_void.arg_block.id = arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_NONE,
@@ -2017,7 +2019,7 @@ TEST_F (CMTest, Cm_SMI_ReadbackPortConfiguration)
    cm_verify_smi_portconfig (port, &configlist);
 
    memset (&arg_block_portcfg, 0, sizeof (arg_block_portconfiglist_t));
-   arg_block_portcfg.arg_block_id = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
+   arg_block_portcfg.arg_block.id = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
    configlist.port_cycle_time     = exp_port_cycle_time;
    configlist.vendorid            = exp_vendorid;
    configlist.deviceid            = exp_deviceid;
@@ -2058,7 +2060,7 @@ TEST_F (CMTest, Cm_SMI_ReadbackPortConfiguration_bad_argblock)
    iolink_arg_block_id_t exp_arg_block_id = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = bad_arg_block_id;
+   arg_block_void.arg_block.id = bad_arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_NONE,
@@ -2086,7 +2088,7 @@ TEST_F (CMTest, Cm_SMI_ReadbackPortConfiguration_bad_exp_arg_block_id)
    iolink_arg_block_id_t bad_exp_arg_block_id = IOLINK_ARG_BLOCK_ID_DS_DATA;
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = arg_block_id;
+   arg_block_void.arg_block.id = arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_NONE,
@@ -2116,7 +2118,7 @@ TEST_F (CMTest, Cm_SMI_ReadbackPortConfiguration_bad_argblock_len)
    iolink_arg_block_id_t exp_arg_block_id = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = arg_block_id;
+   arg_block_void.arg_block.id = arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_NONE,

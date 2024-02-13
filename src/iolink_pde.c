@@ -38,7 +38,21 @@
  *
  */
 
-static inline iolink_port_qualifier_info_t pde_port_quality_to_qualifier (
+static iolink_port_qualifier_info_t pde_port_quality_to_qualifier (
+   iolink_port_t * port);
+static iolink_port_status_info_t pde_get_port_status_info (
+   iolink_port_t * port);
+static iolink_error_t pde_check_smi_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   iolink_arg_block_id_t ref_arg_block_id,
+   uint8_t arg_block_len,
+   iolink_arg_block_id_t exp_exp_arg_block_id,
+   iolink_arg_block_id_t exp_ref_arg_block_id,
+   uint8_t exp_arg_block_len_min,
+   uint8_t exp_arg_block_len_max);
+
+static iolink_port_qualifier_info_t pde_port_quality_to_qualifier (
    iolink_port_t * port)
 {
    iolink_port_info_t * port_info = iolink_get_port_info (port);
@@ -48,7 +62,7 @@ static inline iolink_port_qualifier_info_t pde_port_quality_to_qualifier (
              : IOLINK_PORT_QUALIFIER_INFO_PQ_VALID;
 }
 
-static inline iolink_port_status_info_t pde_get_port_status_info (
+static iolink_port_status_info_t pde_get_port_status_info (
    iolink_port_t * port)
 {
    iolink_port_info_t * port_info = iolink_get_port_info (port);
@@ -168,7 +182,7 @@ iolink_error_t pde_SMI_PDIn_req (
    uint16_t arg_block_len,
    arg_block_t * arg_block)
 {
-   iolink_arg_block_id_t ref_arg_block_id = arg_block->void_block.arg_block_id;
+   iolink_arg_block_id_t ref_arg_block_id = arg_block->id;
    arg_block_pdin_t arg_block_pdin;
    memset (&arg_block_pdin, 0, sizeof (arg_block_pdin_t));
    uint8_t pdin_len     = 1;
@@ -216,7 +230,7 @@ iolink_error_t pde_SMI_PDIn_req (
 
    if (error == IOLINK_ERROR_NONE)
    {
-      arg_block_pdin.h.arg_block_id = exp_arg_block_id;
+      arg_block_pdin.h.arg_block.id = exp_arg_block_id;
       arg_block_pdin.h.len          = pdin_len;
       iolink_smi_cnf (
          port,
@@ -234,7 +248,7 @@ iolink_error_t pde_SMI_PDOut_req (
    uint16_t arg_block_len,
    arg_block_t * arg_block)
 {
-   iolink_arg_block_id_t ref_arg_block_id = arg_block->void_block.arg_block_id;
+   iolink_arg_block_id_t ref_arg_block_id = arg_block->id;
    iolink_error_t error                   = pde_check_smi_req (
       port,
       exp_arg_block_id,
@@ -306,7 +320,7 @@ iolink_error_t pde_SMI_PDInOut_req (
    uint16_t arg_block_len,
    arg_block_t * arg_block)
 {
-   iolink_arg_block_id_t ref_arg_block_id = arg_block->void_block.arg_block_id;
+   iolink_arg_block_id_t ref_arg_block_id = arg_block->id;
    iolink_error_t error                   = pde_check_smi_req (
       port,
       exp_arg_block_id,
@@ -348,7 +362,7 @@ iolink_error_t pde_SMI_PDInOut_req (
          }
          else
          {
-            arg_block_pdinout.h.arg_block_id = exp_arg_block_id;
+            arg_block_pdinout.h.arg_block.id = exp_arg_block_id;
             uint8_t arg_block_pdinout_len =
                sizeof (arg_block_pdinout_head_t) + pdlen;
             iolink_smi_cnf (

@@ -54,13 +54,13 @@ typedef enum iolink_fsm_ode_event
    ODE_EVENT_LAST
 } iolink_fsm_ode_event_t;
 
-const char * iolink_ode_state_literals[] = {
+static const char * const iolink_ode_state_literals[] = {
    "Inactive",
    "ODactive",
    "ODblocked",
 };
 
-const char * iolink_ode_event_literals[] = {
+static const char * const iolink_ode_event_literals[] = {
    "NONE",
    "SMI_DEV_RW_1", /* T1 */
    "OD_START",     /* T2 */
@@ -85,6 +85,49 @@ typedef struct iolink_fsm_ode_state_transitions
    const iolink_fsm_ode_transition_t * transitions;
 } iolink_fsm_ode_state_transitions_t;
 
+/**
+ * Trigger OD FSM state transition
+ *
+ * This function triggers an OD state transition according to the event.
+ */
+static void iolink_ode_event (iolink_port_t * port, iolink_fsm_ode_event_t event);
+
+/* Actions taken when transitioning to a new state. See iolink_ode_event(). */
+static iolink_fsm_ode_event_t ode_smi_od_err (
+   iolink_port_t * port,
+   iolink_fsm_ode_event_t event);
+static iolink_fsm_ode_event_t ode_od_start (
+   iolink_port_t * port,
+   iolink_fsm_ode_event_t event);
+static iolink_fsm_ode_event_t ode_od_stop (
+   iolink_port_t * port,
+   iolink_fsm_ode_event_t event);
+static iolink_fsm_ode_event_t ode_smi_rw (
+   iolink_port_t * port,
+   iolink_fsm_ode_event_t event);
+static iolink_fsm_ode_event_t ode_smi_done (
+   iolink_port_t * port,
+   iolink_fsm_ode_event_t event);
+static iolink_fsm_ode_event_t ode_wait (
+   iolink_port_t * port,
+   iolink_fsm_ode_event_t event);
+
+/* Callback functions to run on main thread */
+static void ode_read_cnf_cb (iolink_job_t * job);
+static void ode_write_cnf_cb (iolink_job_t * job);
+static void od_start_cb (iolink_job_t * job);
+static void od_stop_cb (iolink_job_t * job);
+static void SMI_rw_req_cb (iolink_job_t * job);
+
+/* Other functions */
+static iolink_fsm_ode_event_t ode_AL_Read_req (iolink_port_t * port);
+static iolink_fsm_ode_event_t ode_AL_Write_req (iolink_port_t * port);
+static iolink_error_t ode_SMI_rw_req (
+   iolink_job_type_t job_type,
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 static void ode_AL_Read_cnf (
    iolink_port_t * port,
    uint8_t len,
@@ -93,7 +136,13 @@ static void ode_AL_Read_cnf (
 static void ode_AL_Write_cnf (
    iolink_port_t * port,
    iolink_smi_errortypes_t errortype);
-static void SMI_rw_req_cb (iolink_job_t * job);
+static iolink_error_t ode_SMI_DeviceReadWrite_req (
+   iolink_port_t * port,
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block,
+   iolink_arg_block_id_t od_or_void,
+   iolink_job_type_t type);
 
 static iolink_fsm_ode_event_t ode_smi_od_err (
    iolink_port_t * port,
@@ -103,7 +152,7 @@ static iolink_fsm_ode_event_t ode_smi_od_err (
    iolink_ode_port_t * ode            = iolink_get_ode_ctx (port);
    iolink_smi_service_req_t * smi_req = &ode->job_smi_req_busy->smi_req;
    iolink_arg_block_id_t ref_arg_block_id =
-      smi_req->arg_block->void_block.arg_block_id;
+      smi_req->arg_block->id;
 
    /* SMI_ParamReadBatch and SMI_ParamWriteBatch are not supported */
    if (
@@ -211,7 +260,7 @@ static iolink_fsm_ode_event_t ode_smi_rw (
    iolink_smi_service_req_t * smi_req     = &ode->smi_req;
    iolink_arg_block_id_t exp_arg_block_id = smi_req->exp_arg_block_id;
    iolink_arg_block_id_t ref_arg_block_id =
-      smi_req->arg_block->void_block.arg_block_id;
+      smi_req->arg_block->id;
 
    if (
       (exp_arg_block_id == IOLINK_ARG_BLOCK_ID_OD_RD) &&
@@ -252,7 +301,7 @@ static iolink_fsm_ode_event_t ode_smi_done (
    iolink_smi_service_req_t * smi_req     = &ode->smi_req;
    iolink_arg_block_id_t exp_arg_block_id = smi_req->exp_arg_block_id;
    iolink_arg_block_id_t ref_arg_block_id =
-      smi_req->arg_block->void_block.arg_block_id;
+      smi_req->arg_block->id;
 
    if (smi_req->result != IOLINK_SMI_ERRORTYPE_NONE)
    {

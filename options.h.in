@@ -63,6 +63,10 @@
 #define IOLINK_PDE_LOG     (LOG_STATE_ON)
 #endif
 
+#ifndef IOLINK_APP_LOG
+#define IOLINK_APP_LOG     (LOG_STATE_ON)
+#endif
+
 #ifndef IOLINK_NUM_PORTS
 #define IOLINK_NUM_PORTS      (@IOLINK_NUM_PORTS@)
 #endif

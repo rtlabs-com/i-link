@@ -51,10 +51,10 @@ static bool is_all_zeroes (uint8_t * data, int length)
 static void ifmrfid_run (iolink_app_port_ctx_t * app_port)
 {
    uint8_t port_index = app_port->portnumber - 1;
-   uint8_t pdata[IOLINK_NUM_PORTS][IOLINK_PD_MAX_SIZE];
+   uint8_t pdata[IOLINK_PD_MAX_SIZE];
    static bool tag_is_present[IOLINK_NUM_PORTS] = {false};
 
-   if (do_smi_pdin (app_port, NULL, pdata[port_index]) != IOLINK_PD_MAX_SIZE)
+   if (do_smi_pdin (app_port, NULL, pdata) != IOLINK_PD_MAX_SIZE)
    {
       LOG_WARNING (
          LOG_STATE_ON,
@@ -64,7 +64,7 @@ static void ifmrfid_run (iolink_app_port_ctx_t * app_port)
       return;
    }
 
-   uint8_t error_code = ifmrfid_get_error_code (pdata[port_index]);
+   uint8_t error_code = ifmrfid_get_error_code (pdata);
    if (error_code != 0)
    {
       LOG_ERROR (
@@ -76,12 +76,12 @@ static void ifmrfid_run (iolink_app_port_ctx_t * app_port)
       return;
    }
 
-   if (ifmrfid_get_tag_present (pdata[port_index]))
+   if (ifmrfid_get_tag_present (pdata))
    {
       if (!tag_is_present[port_index]) // tagPresent transition from 0 to 1
       {
          // check if UID is invalid, i.e. all zeroes (data starts at byte 2)
-         if (is_all_zeroes (&pdata[port_index][2], RFID_DATA_SIZE))
+         if (is_all_zeroes (&pdata[2], RFID_DATA_SIZE))
          {
             LOG_ERROR (
                LOG_STATE_ON,
@@ -97,7 +97,7 @@ static void ifmrfid_run (iolink_app_port_ctx_t * app_port)
          int i;
          for (i = 0; i < RFID_DATA_SIZE; i++)
          {
-            p += sprintf (p, "%02X", pdata[port_index][2 + i]);
+            p += sprintf (p, "%02X", pdata[2 + i]);
          }
          LOG_INFO (
             LOG_STATE_ON,

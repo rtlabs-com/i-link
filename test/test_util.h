@@ -41,6 +41,12 @@ typedef struct
    iolink_event_source_t source;
 } al_event_t;
 
+typedef struct arg_block_test
+{
+   arg_block_t arg_block;
+   uint8_t data[sizeof (arg_block_pdinout_t) - sizeof (arg_block_t)];
+} arg_block_test_t;
+
 class TestBase : public ::testing::Test
 {
  protected:
@@ -130,7 +136,7 @@ class TestBase : public ::testing::Test
       mock_iolink_smi_portevent_ind_cnt  = 0;
       mock_iolink_smi_arg_block_len      = 0;
       mock_iolink_smi_ref_arg_block_id   = IOLINK_ARG_BLOCK_ID_MASTERIDENT;
-      memset (mock_iolink_smi_arg_block, 0, sizeof (arg_block_t) + 64);
+      memset (mock_iolink_smi_arg_block, 0, sizeof (arg_block_test_t) + 64);
    }
    virtual void TearDown()
    {

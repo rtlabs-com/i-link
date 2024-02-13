@@ -1,0 +1,63 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "rtkernel",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "build.${presetName}",
+            "toolchainFile": "$env{RTK}/cmake/toolchain/rt-kernel.cmake",
+            "description": "Base target for rtkernel build. You will need to set BSP and RTK environmental variables in a child preset.",
+            "environment": {
+                "BSP": "",
+                "RTK": ""
+            },
+            "cacheVariables": {
+                "IOLINK_BUILD_RTKERNEL": "ON",
+                "CMAKE_MODULE_PATH": "$env{RTK}/cmake",
+                "CMAKE_PREFIX_PATH": "$env{RTK}/cmake/xmc4/cortex-m4f",
+                "BUILD_RTK_BSP": true
+            }
+        },
+        {
+            "name": "linux",
+            "generator": "Ninja",
+            "binaryDir": "build.${presetName}",
+            "cacheVariables": {
+                "BUILD_TESTING": true
+            }
+        },
+        {
+            "name": "docs",
+            "generator": "Ninja",
+            "binaryDir": "build.${presetName}",
+            "cacheVariables": {
+                "IOLINKMASTER_BUILD_DOCS": true
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "linux",
+            "configurePreset": "linux"
+        },
+        {
+            "name": "docs",
+            "targets": "sphinx-html",
+            "configurePreset": "docs"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "linux",
+            "configurePreset": "linux",
+            "output": {
+                "outputOnFailure": true
+            },
+            "execution": {
+                "noTestsAction": "error",
+                "stopOnFailure": true
+            }
+        }
+    ]
+}

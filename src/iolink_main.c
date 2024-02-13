@@ -89,7 +89,7 @@ typedef struct iolink_m
 
 static iolink_m_t * the_master = NULL;
 
-static inline iolink_transmission_rate_t mhmode_to_transmission_rate (
+static iolink_transmission_rate_t mhmode_to_transmission_rate (
    iolink_mhmode_t mhmode)
 {
    iolink_transmission_rate_t res = IOLINK_TRANSMISSION_RATE_NOT_DETECTED;
@@ -112,7 +112,7 @@ static inline iolink_transmission_rate_t mhmode_to_transmission_rate (
    return res;
 }
 
-static inline iolink_error_t portnumber_to_iolinkport (
+static iolink_error_t portnumber_to_iolinkport (
    uint8_t portnumber,
    iolink_port_t ** port)
 {
@@ -135,7 +135,7 @@ static inline iolink_error_t portnumber_to_iolinkport (
    return IOLINK_ERROR_NONE;
 }
 
-static inline iolink_error_t common_smi_check (
+static iolink_error_t common_smi_check (
    uint8_t portnumber,
    arg_block_t * arg_block,
    iolink_port_t ** port)
@@ -362,7 +362,7 @@ void iolink_smi_voidblock_cnf (
       arg_block_void_t arg_block_void;
 
       memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-      arg_block_void.arg_block_id = IOLINK_ARG_BLOCK_ID_VOID_BLOCK;
+      arg_block_void.arg_block.id = IOLINK_ARG_BLOCK_ID_VOID_BLOCK;
       port->master->cb_smi (
          port->master->cb_arg,
          iolink_get_portnumber (port),
@@ -383,7 +383,7 @@ void iolink_smi_joberror_ind (
       arg_block_joberror_t arg_block_error;
 
       memset (&arg_block_error, 0, sizeof (arg_block_joberror_t));
-      arg_block_error.arg_block_id     = IOLINK_ARG_BLOCK_ID_JOB_ERROR;
+      arg_block_error.arg_block.id     = IOLINK_ARG_BLOCK_ID_JOB_ERROR;
       arg_block_error.exp_arg_block_id = exp_arg_block_id;
       arg_block_error.error            = error;
       port->master->cb_smi (
@@ -512,7 +512,7 @@ iolink_m_t * iolink_m_init (const iolink_m_cfg_t * m_cfg)
       port->master     = master;
       port->portnumber = i + 1;
 
-      iolink_pl_init (port, port_cfg->name);
+      iolink_pl_init (port, port_cfg->drv, port_cfg->arg);
       iolink_sm_init (port);
       iolink_al_init (port);
       iolink_cm_init (port);
@@ -698,8 +698,10 @@ iolink_error_t SMI_DeviceWrite_req (
       return error;
    }
 
+   arg_block_od_t * arg_block_od = (arg_block_od_t *)arg_block;
+
    // special check needed to pass test case 289
-   if ((arg_block->od.index == 24) && ((arg_block_len - sizeof (arg_block_od_t)) == 10))
+   if ((arg_block_od->index == 24) && ((arg_block_len - sizeof (arg_block_od_t)) == 10))
    {
       return IOLINK_ERROR_ODLENGTH;
    }

@@ -13,6 +13,12 @@
  * full license information.
  ********************************************************************/
 
+/**
+ * @file
+ * @brief Data storage layer
+ *
+ */
+
 #ifndef IOLINK_DS_H
 #define IOLINK_DS_H
 

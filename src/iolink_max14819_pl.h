@@ -13,18 +13,23 @@
  * full license information.
  ********************************************************************/
 
+/**
+ * @file
+ * @brief Driver for the MAX14819 IO-Link chip
+ *
+ * The iolink_max14819 driver is used for communication with a MAX14819
+ * IO-Link chip. The chip contains two IO-Link master transceivers with logic.
+ *
+ */
+
 #ifndef IOLINK_MAX14819_PL_H
 #define IOLINK_MAX14819_PL_H
 
 #include <iolink.h>
-
 // TODO
 #ifdef __rtk__
-#include <types.h>
-#include <dev.h>
+#include <kern/types.h>
 #include <gpio.h>
-// TODO: use include file instead?
-#define fd_get_driver(fd) dev_get_driver (fd)
 #endif /* __rtk__ */
 
 #ifdef __cplusplus
@@ -34,11 +39,9 @@ extern "C" {
 #define MAX14819_NUM_CHANNELS 2
 #define IOLINK14819_TX_MAX    (66)
 
-#ifdef __linux__
-#include <osal_drv.h>
-#endif
 #include <osal.h>
 #include <iolink_pl_hw_drv.h>
+
 /* Driver structure */
 typedef struct iolink_14819_drv
 {

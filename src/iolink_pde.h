@@ -13,6 +13,12 @@
  * full license information.
  ********************************************************************/
 
+/**
+ * @file
+ * @brief Process Data Exchange layer
+ *
+ */
+
 #ifndef IOLINK_PDE_H
 #define IOLINK_PDE_H
 

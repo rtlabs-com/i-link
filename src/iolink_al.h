@@ -13,6 +13,12 @@
  * full license information.
  ********************************************************************/
 
+/**
+ * @file
+ * @brief Application layer
+ *
+ */
+
 #ifndef IOLINK_AL_H
 #define IOLINK_AL_H
 

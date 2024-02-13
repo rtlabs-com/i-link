@@ -33,14 +33,14 @@ class ODETest : public TestBase
    };
 };
 
-static inline iolink_ode_state_t ode_get_state (iolink_port_t * port)
+static iolink_ode_state_t ode_get_state (iolink_port_t * port)
 {
    iolink_ode_port_t * ode = iolink_get_ode_ctx (port);
 
    return ode->state;
 }
 
-static inline arg_block_od_t * ode_create_ArgBlock_od (uint8_t data_len)
+static arg_block_od_t * ode_create_ArgBlock_od (uint8_t data_len)
 {
    arg_block_od_t * arg_block_od = NULL;
 
@@ -53,12 +53,12 @@ static inline arg_block_od_t * ode_create_ArgBlock_od (uint8_t data_len)
       (arg_block_od_t *)calloc (1, sizeof (arg_block_od_t) + data_len);
    EXPECT_TRUE (arg_block_od);
 
-   arg_block_od->arg_block_id = IOLINK_ARG_BLOCK_ID_VOID_BLOCK;
+   arg_block_od->arg_block.id = IOLINK_ARG_BLOCK_ID_VOID_BLOCK;
 
    return arg_block_od;
 }
 
-static inline void ode_verify_smi_err (
+static void ode_verify_smi_err (
    iolink_arg_block_id_t exp_smi_ref_arg_id,
    iolink_arg_block_id_t exp_smi_exp_arg_id,
    iolink_smi_errortypes_t exp_errortype)
@@ -66,7 +66,7 @@ static inline void ode_verify_smi_err (
    EXPECT_EQ (exp_smi_ref_arg_id, mock_iolink_smi_ref_arg_block_id);
 
    iolink_arg_block_id_t arg_block_id =
-      mock_iolink_smi_arg_block->void_block.arg_block_id;
+      mock_iolink_smi_arg_block->id;
    EXPECT_EQ (IOLINK_ARG_BLOCK_ID_JOB_ERROR, arg_block_id);
 
    arg_block_joberror_t * job_error =
@@ -78,7 +78,7 @@ static inline void ode_verify_smi_err (
    EXPECT_EQ (exp_smi_exp_arg_id, exp_arg_block_id);
 }
 
-static inline void ode_verify_smi_read (
+static void ode_verify_smi_read (
    iolink_arg_block_id_t exp_smi_ref_arg_id,
    iolink_arg_block_id_t exp_smi_arg_id,
    uint8_t exp_len,
@@ -86,11 +86,11 @@ static inline void ode_verify_smi_read (
 {
    EXPECT_EQ (exp_smi_ref_arg_id, mock_iolink_smi_ref_arg_block_id);
    iolink_arg_block_id_t arg_block_id =
-      mock_iolink_smi_arg_block->void_block.arg_block_id;
+      mock_iolink_smi_arg_block->id;
    EXPECT_EQ (exp_smi_arg_id, arg_block_id);
    EXPECT_EQ (arg_block_id, IOLINK_ARG_BLOCK_ID_OD_RD);
 
-   if (mock_iolink_smi_arg_block->void_block.arg_block_id == IOLINK_ARG_BLOCK_ID_OD_RD)
+   if (mock_iolink_smi_arg_block->id == IOLINK_ARG_BLOCK_ID_OD_RD)
    {
       arg_block_od_t * arg_block_od = (arg_block_od_t *)mock_iolink_smi_arg_block;
 
@@ -106,20 +106,20 @@ static inline void ode_verify_smi_read (
    }
 }
 
-static inline void ode_verify_smi_write (
+static void ode_verify_smi_write (
    iolink_arg_block_id_t exp_smi_ref_arg_id,
    iolink_arg_block_id_t exp_smi_arg_id,
    uint8_t exp_len)
 {
    EXPECT_EQ (exp_smi_ref_arg_id, mock_iolink_smi_ref_arg_block_id);
    iolink_arg_block_id_t arg_block_id =
-      mock_iolink_smi_arg_block->void_block.arg_block_id;
+      mock_iolink_smi_arg_block->id;
    EXPECT_EQ (exp_smi_arg_id, arg_block_id);
    EXPECT_EQ (arg_block_id, IOLINK_ARG_BLOCK_ID_VOID_BLOCK);
    EXPECT_EQ (exp_len, mock_iolink_smi_arg_block_len);
 }
 
-static inline void ode_start (iolink_port_t * port)
+static void ode_start (iolink_port_t * port)
 {
    /* Start ODE */
    EXPECT_EQ (ODE_STATE_Inactive, ode_get_state (port));
@@ -128,7 +128,7 @@ static inline void ode_start (iolink_port_t * port)
    EXPECT_EQ (ODE_STATE_ODactive, ode_get_state (port));
 }
 
-static inline void ode_deviceread (
+static void ode_deviceread (
    iolink_port_t * port,
    uint16_t index,
    uint8_t subindex,
@@ -139,7 +139,7 @@ static inline void ode_deviceread (
    arg_block_od                  = ode_create_ArgBlock_od (len);
    ASSERT_TRUE (arg_block_od);
 
-   arg_block_od->arg_block_id = IOLINK_ARG_BLOCK_ID_OD_RD;
+   arg_block_od->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_RD;
    arg_block_od->index        = index;
    arg_block_od->subindex     = subindex;
 
@@ -174,7 +174,7 @@ static inline void ode_deviceread (
    free (arg_block_od);
 }
 
-static inline void ode_devicewrite (
+static void ode_devicewrite (
    iolink_port_t * port,
    uint16_t index,
    uint8_t subindex,
@@ -186,7 +186,7 @@ static inline void ode_devicewrite (
    arg_block_od = ode_create_ArgBlock_od (len);
    ASSERT_TRUE (arg_block_od);
 
-   arg_block_od->arg_block_id = IOLINK_ARG_BLOCK_ID_OD_WR;
+   arg_block_od->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_WR;
    arg_block_od->index        = index;
    arg_block_od->subindex     = subindex;
 
@@ -286,7 +286,7 @@ TEST_F (ODETest, Ode_DeviceRead_bad_argblock)
    ASSERT_TRUE (arg_block_od);
 
    /* Bad argblock type */
-   arg_block_od->arg_block_id = bad_arg_block_id;
+   arg_block_od->arg_block.id = bad_arg_block_id;
    arg_block_od->index        = index;
    arg_block_od->subindex     = subindex;
    arg_block_od->data[0]      = 2;
@@ -328,7 +328,7 @@ TEST_F (ODETest, Ode_DeviceRead_bad_argblock_inactive)
    ASSERT_TRUE (arg_block_od);
 
    /* Bad argblock type */
-   arg_block_od->arg_block_id = bad_arg_block_id;
+   arg_block_od->arg_block.id = bad_arg_block_id;
    arg_block_od->index        = index;
    arg_block_od->subindex     = subindex;
    arg_block_od->data[0]      = data[0];
@@ -374,13 +374,13 @@ TEST_F (ODETest, Ode_DeviceRead_bad_argblock_busy)
    arg_block_od_busy = ode_create_ArgBlock_od (sizeof (data));
    ASSERT_TRUE (arg_block_od_busy);
 
-   arg_block_od_first->arg_block_id = IOLINK_ARG_BLOCK_ID_OD_RD;
+   arg_block_od_first->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_RD;
    arg_block_od_first->index        = index;
    arg_block_od_first->subindex     = subindex;
    arg_block_od_first->data[0]      = 2;
 
    /* Bad argblock type */
-   arg_block_od_busy->arg_block_id = bad_arg_block_id;
+   arg_block_od_busy->arg_block.id = bad_arg_block_id;
    arg_block_od_busy->index        = index;
    arg_block_od_busy->subindex     = subindex;
    arg_block_od_busy->data[0]      = 3;
@@ -450,11 +450,11 @@ TEST_F (ODETest, Ode_DeviceRead_too_small)
    uint8_t subindex = 4;
 
    uint8_t arg_block_len = 2;
-   /* Buffer of size 2 is too samll for data[6] */
+   /* Buffer of size 2 is too small for data[6] */
    arg_block_od = ode_create_ArgBlock_od (arg_block_len);
    ASSERT_TRUE (arg_block_od);
 
-   arg_block_od->arg_block_id = IOLINK_ARG_BLOCK_ID_OD_RD;
+   arg_block_od->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_RD;
    arg_block_od->index        = index;
    arg_block_od->subindex     = subindex;
    arg_block_od->data[0]      = 3;
@@ -505,12 +505,12 @@ TEST_F (ODETest, Ode_DeviceRead_busy)
    arg_block_od_busy = ode_create_ArgBlock_od (sizeof (data));
    ASSERT_TRUE (arg_block_od_busy);
 
-   arg_block_od_first->arg_block_id = IOLINK_ARG_BLOCK_ID_OD_RD;
+   arg_block_od_first->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_RD;
    arg_block_od_first->index        = index;
    arg_block_od_first->subindex     = subindex;
    arg_block_od_first->data[0]      = 2;
 
-   arg_block_od_busy->arg_block_id = IOLINK_ARG_BLOCK_ID_OD_RD;
+   arg_block_od_busy->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_RD;
    arg_block_od_busy->index        = index;
    arg_block_od_busy->subindex     = subindex;
    arg_block_od_busy->data[0]      = 3;
@@ -581,7 +581,7 @@ TEST_F (ODETest, Ode_DeviceRead_inactive)
    arg_block_od = ode_create_ArgBlock_od (sizeof (data));
    ASSERT_TRUE (arg_block_od);
 
-   arg_block_od->arg_block_id = IOLINK_ARG_BLOCK_ID_OD_RD;
+   arg_block_od->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_RD;
    arg_block_od->index        = index;
    arg_block_od->subindex     = subindex;
    arg_block_od->data[0]      = data[0];
@@ -651,7 +651,7 @@ TEST_F (ODETest, Ode_DeviceWrite_bad_argblock)
    ASSERT_TRUE (arg_block_od);
 
    /* Bad argblock type */
-   arg_block_od->arg_block_id = bad_arg_block_id;
+   arg_block_od->arg_block.id = bad_arg_block_id;
    arg_block_od->index        = index;
    arg_block_od->subindex     = subindex;
    arg_block_od->data[0]      = data[0];
@@ -693,7 +693,7 @@ TEST_F (ODETest, Ode_DeviceWrite_bad_argblock_inactive)
    ASSERT_TRUE (arg_block_od);
 
    /* Bad argblock type */
-   arg_block_od->arg_block_id = bad_arg_block_id;
+   arg_block_od->arg_block.id = bad_arg_block_id;
    arg_block_od->index        = index;
    arg_block_od->subindex     = subindex;
    arg_block_od->data[0]      = data[0];
@@ -739,13 +739,13 @@ TEST_F (ODETest, Ode_DeviceWrite_bad_argblock_busy)
    arg_block_od_busy = ode_create_ArgBlock_od (sizeof (data));
    ASSERT_TRUE (arg_block_od_busy);
 
-   arg_block_od_first->arg_block_id = IOLINK_ARG_BLOCK_ID_OD_WR;
+   arg_block_od_first->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_WR;
    arg_block_od_first->index        = index;
    arg_block_od_first->subindex     = subindex;
    arg_block_od_first->data[0]      = data[0];
 
    /* Bad argblock type */
-   arg_block_od_busy->arg_block_id = bad_arg_block_id;
+   arg_block_od_busy->arg_block.id = bad_arg_block_id;
    arg_block_od_busy->index        = index;
    arg_block_od_busy->subindex     = subindex;
    arg_block_od_busy->data[0]      = data[0];
@@ -823,12 +823,12 @@ TEST_F (ODETest, Ode_DeviceWrite_busy)
    arg_block_od_busy = ode_create_ArgBlock_od (sizeof (data));
    ASSERT_TRUE (arg_block_od_busy);
 
-   arg_block_od_first->arg_block_id = IOLINK_ARG_BLOCK_ID_OD_WR;
+   arg_block_od_first->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_WR;
    arg_block_od_first->index        = index;
    arg_block_od_first->subindex     = subindex;
    arg_block_od_first->data[0]      = data[0];
 
-   arg_block_od_busy->arg_block_id = IOLINK_ARG_BLOCK_ID_OD_WR;
+   arg_block_od_busy->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_WR;
    arg_block_od_busy->index        = index;
    arg_block_od_busy->subindex     = subindex;
    arg_block_od_busy->data[0]      = data[0];
@@ -900,7 +900,7 @@ TEST_F (ODETest, Ode_DeviceWrite_inactive)
    arg_block_od = ode_create_ArgBlock_od (sizeof (data));
    ASSERT_TRUE (arg_block_od);
 
-   arg_block_od->arg_block_id = IOLINK_ARG_BLOCK_ID_OD_WR;
+   arg_block_od->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_WR;
    arg_block_od->index        = index;
    arg_block_od->subindex     = subindex;
    arg_block_od->data[0]      = data[0];
@@ -932,9 +932,9 @@ TEST_F (ODETest, Ode_DeviceWrite_inactive)
 
 TEST_F (ODETest, Ode_ParamReadBatch_inactive)
 {
-   arg_block_t arg_block;
+   arg_block_test_t arg_block;
 
-   arg_block.void_block.arg_block_id = IOLINK_ARG_BLOCK_ID_PORT_INXDEX_LIST;
+   arg_block.arg_block.id = IOLINK_ARG_BLOCK_ID_PORT_INXDEX_LIST;
 
    EXPECT_EQ (ODE_STATE_Inactive, ode_get_state (port));
 
@@ -943,8 +943,8 @@ TEST_F (ODETest, Ode_ParamReadBatch_inactive)
       SMI_ParamReadBatch_req (
          portnumber,
          IOLINK_ARG_BLOCK_ID_DEV_PAR_BAT,
-         sizeof (arg_block_t),
-         &arg_block));
+         sizeof (arg_block_test_t),
+         &arg_block.arg_block));
    mock_iolink_job.callback (&mock_iolink_job);
    EXPECT_EQ (ODE_STATE_Inactive, ode_get_state (port));
 
@@ -961,9 +961,9 @@ TEST_F (ODETest, Ode_ParamReadBatch_inactive)
 
 TEST_F (ODETest, Ode_ParamReadBatch_not_supported)
 {
-   arg_block_t arg_block;
+   arg_block_test_t arg_block;
 
-   arg_block.void_block.arg_block_id = IOLINK_ARG_BLOCK_ID_PORT_INXDEX_LIST;
+   arg_block.arg_block.id = IOLINK_ARG_BLOCK_ID_PORT_INXDEX_LIST;
 
    ode_start (port);
 
@@ -972,8 +972,8 @@ TEST_F (ODETest, Ode_ParamReadBatch_not_supported)
       SMI_ParamReadBatch_req (
          portnumber,
          IOLINK_ARG_BLOCK_ID_DEV_PAR_BAT,
-         sizeof (arg_block_t),
-         &arg_block));
+         sizeof (arg_block_test_t),
+         &arg_block.arg_block));
    mock_iolink_job.callback (&mock_iolink_job);
    EXPECT_EQ (ODE_STATE_ODactive, ode_get_state (port));
 
@@ -993,7 +993,7 @@ TEST_F (ODETest, Ode_ParamReadBatch_busy)
    int i;
 
    arg_block_od_t * arg_block_od_first = NULL;
-   arg_block_t arg_block_readbatch;
+   arg_block_test_t arg_block_readbatch;
 
    uint8_t data[1]  = {0x65};
    uint16_t index   = 8;
@@ -1002,12 +1002,12 @@ TEST_F (ODETest, Ode_ParamReadBatch_busy)
    arg_block_od_first = ode_create_ArgBlock_od (sizeof (data));
    ASSERT_TRUE (arg_block_od_first);
 
-   arg_block_od_first->arg_block_id = IOLINK_ARG_BLOCK_ID_OD_RD;
+   arg_block_od_first->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_RD;
    arg_block_od_first->index        = index;
    arg_block_od_first->subindex     = subindex;
    arg_block_od_first->data[0]      = 2;
 
-   arg_block_readbatch.void_block.arg_block_id =
+   arg_block_readbatch.arg_block.id =
       IOLINK_ARG_BLOCK_ID_PORT_INXDEX_LIST;
 
    ode_start (port);
@@ -1034,8 +1034,8 @@ TEST_F (ODETest, Ode_ParamReadBatch_busy)
          SMI_ParamReadBatch_req (
             portnumber,
             IOLINK_ARG_BLOCK_ID_DEV_PAR_BAT,
-            sizeof (arg_block_t),
-            &arg_block_readbatch));
+            sizeof (arg_block_test_t),
+            &arg_block_readbatch.arg_block));
       mock_iolink_job.callback (&mock_iolink_job);
       /* Verify JOB_ERROR */
       EXPECT_EQ (mock_iolink_smi_cnf_cnt, 0);
@@ -1066,9 +1066,9 @@ TEST_F (ODETest, Ode_ParamReadBatch_busy)
 
 TEST_F (ODETest, Ode_ParamWriteBatch_inactive)
 {
-   arg_block_t arg_block;
+   arg_block_test_t arg_block;
 
-   arg_block.void_block.arg_block_id = IOLINK_ARG_BLOCK_ID_DEV_PAR_BAT;
+   arg_block.arg_block.id = IOLINK_ARG_BLOCK_ID_DEV_PAR_BAT;
 
    EXPECT_EQ (ODE_STATE_Inactive, ode_get_state (port));
 
@@ -1077,8 +1077,8 @@ TEST_F (ODETest, Ode_ParamWriteBatch_inactive)
       SMI_ParamWriteBatch_req (
          portnumber,
          IOLINK_ARG_BLOCK_ID_VOID_BLOCK,
-         sizeof (arg_block_t),
-         &arg_block));
+         sizeof (arg_block_test_t),
+         &arg_block.arg_block));
    mock_iolink_job.callback (&mock_iolink_job);
    EXPECT_EQ (ODE_STATE_Inactive, ode_get_state (port));
 
@@ -1095,9 +1095,9 @@ TEST_F (ODETest, Ode_ParamWriteBatch_inactive)
 
 TEST_F (ODETest, Ode_ParamWriteBatch_not_supported)
 {
-   arg_block_t arg_block;
+   arg_block_test_t arg_block;
 
-   arg_block.void_block.arg_block_id = IOLINK_ARG_BLOCK_ID_DEV_PAR_BAT;
+   arg_block.arg_block.id = IOLINK_ARG_BLOCK_ID_DEV_PAR_BAT;
 
    ode_start (port);
 
@@ -1106,8 +1106,8 @@ TEST_F (ODETest, Ode_ParamWriteBatch_not_supported)
       SMI_ParamWriteBatch_req (
          portnumber,
          IOLINK_ARG_BLOCK_ID_VOID_BLOCK,
-         sizeof (arg_block_t),
-         &arg_block));
+         sizeof (arg_block_test_t),
+         &arg_block.arg_block));
    mock_iolink_job.callback (&mock_iolink_job);
    EXPECT_EQ (ODE_STATE_ODactive, ode_get_state (port));
 
@@ -1127,7 +1127,7 @@ TEST_F (ODETest, Ode_ParamWriteBatch_busy)
    int i;
 
    arg_block_od_t * arg_block_od_first = NULL;
-   arg_block_t arg_block_readbatch;
+   arg_block_test_t arg_block_readbatch;
 
    uint8_t data[1]  = {0x65};
    uint16_t index   = 8;
@@ -1136,12 +1136,12 @@ TEST_F (ODETest, Ode_ParamWriteBatch_busy)
    arg_block_od_first = ode_create_ArgBlock_od (sizeof (data));
    ASSERT_TRUE (arg_block_od_first);
 
-   arg_block_od_first->arg_block_id = IOLINK_ARG_BLOCK_ID_OD_RD;
+   arg_block_od_first->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_RD;
    arg_block_od_first->index        = index;
    arg_block_od_first->subindex     = subindex;
    arg_block_od_first->data[0]      = 2;
 
-   arg_block_readbatch.void_block.arg_block_id = IOLINK_ARG_BLOCK_ID_DEV_PAR_BAT;
+   arg_block_readbatch.arg_block.id = IOLINK_ARG_BLOCK_ID_DEV_PAR_BAT;
 
    ode_start (port);
 
@@ -1167,8 +1167,8 @@ TEST_F (ODETest, Ode_ParamWriteBatch_busy)
          SMI_ParamWriteBatch_req (
             portnumber,
             IOLINK_ARG_BLOCK_ID_VOID_BLOCK,
-            sizeof (arg_block_t),
-            &arg_block_readbatch));
+            sizeof (arg_block_test_t),
+            &arg_block_readbatch.arg_block));
       mock_iolink_job.callback (&mock_iolink_job);
       /* Verify JOB_ERROR */
       EXPECT_EQ (mock_iolink_smi_cnf_cnt, 0);

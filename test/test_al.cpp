@@ -196,7 +196,7 @@ TEST_F (ALTest, Al_write_param_isdu_2)
    EXPECT_EQ (mock_iolink_dl_control_req_cnt, 0);
 }
 
-static inline void test_al_control (
+static void test_al_control (
    iolink_port_t * port,
    iolink_controlcode_t controlcode)
 {
@@ -425,7 +425,7 @@ TEST_F (ALTest, Al_read_param_0_1_multiple_al_service_calls)
    }
 }
 
-static inline void al_verify_events (
+static void al_verify_events (
    iolink_port_t * port,
    uint8_t event_cnt,
    al_event_t * events)

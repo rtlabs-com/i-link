@@ -46,7 +46,14 @@ add_executable(iol_test
   iolink_test.cpp
   )
 
-include_directories(${OSAL_INCLUDES} .)
+target_include_directories(iol_test
+  PRIVATE
+  .
+  "$<TARGET_PROPERTY:iolmaster,INTERFACE_INCLUDE_DIRECTORIES>"
+  SYSTEM
+  "$<TARGET_PROPERTY:iolmaster,INTERFACE_SYSTEM_INCLUDE_DIRECTORIES>"
+  )
+
 target_link_libraries(iol_test PUBLIC osal)
 add_gtest(iol_test)
 

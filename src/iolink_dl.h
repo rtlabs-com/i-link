@@ -13,6 +13,12 @@
  * full license information.
  ********************************************************************/
 
+/**
+ * @file
+ * @brief Data link layer
+ *
+ */
+
 #ifndef IOLINK_DL_H
 #define IOLINK_DL_H
 
@@ -40,8 +46,8 @@ typedef struct iolink_dl iolink_dl_t;
 #define IOLINK_PL_EVENT_STATUS       BIT (5)
 #define IOLINK_DL_EVENT_TIMEOUT      BIT (10)
 #define IOLINK_DL_EVENT_TIMEOUT_TCYC BIT (11)
-//#define IOLINK_DL_EVENT_ODH            BIT(12)
-//#define IOLINK_DL_EVENT_PDH            BIT(13)
+// #define IOLINK_DL_EVENT_ODH            BIT(12)
+// #define IOLINK_DL_EVENT_PDH            BIT(13)
 #define IOLINK_DL_EVENT_MDH BIT (14)
 #define IOLINK_DL_EVENT_MH  BIT (15)
 
@@ -343,10 +349,10 @@ iolink_error_t DL_SetMode_req (
 iolink_error_t DL_Write_Devicemode_req (
    iolink_port_t * port,
    iolink_dl_mode_t devicemode);
-iolink_error_t DL_ReadParam_req (iolink_port_t * port, uint8_t address);
+iolink_error_t DL_ReadParam_req (iolink_port_t * port, uint16_t address);
 iolink_error_t DL_WriteParam_req (
    iolink_port_t * port,
-   uint8_t address,
+   uint16_t address,
    uint8_t value);
 iolink_error_t DL_ISDUTransport_req (
    iolink_port_t * port,
@@ -369,16 +375,15 @@ iolink_error_t DL_PDOutputGet_req (
  * This function instantiates the data link layer for one port,
  * and starts a thread handling that port.
  *
- * @param port               Port information struct
- * @param port_cfg           Port configuration struct
+ * @param port               Resulting port information struct
  * @param thread_prio        Priority of the thread
  * @param thread_stack_size  Stack size of the thread
  */
 void iolink_dl_instantiate (
    iolink_port_t * port,
-   const iolink_port_cfg_t * port_cfg,
    unsigned int thread_prio,
    size_t thread_stack_size);
+
 /**
  * This function resets the data link layer for one port to an initial state.
  *

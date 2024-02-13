@@ -36,7 +36,7 @@ class SMTest : public TestBase
    };
 };
 
-static inline iolink_sm_state_t sm_get_state (iolink_port_t * port)
+static iolink_sm_state_t sm_get_state (iolink_port_t * port)
 {
    iolink_sm_port_t * sm = iolink_get_sm_ctx (port);
 

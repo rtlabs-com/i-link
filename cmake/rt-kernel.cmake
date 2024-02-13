@@ -13,9 +13,36 @@
 # full license information.
 #*******************************************************************/
 
-set(OSAL_INCLUDES
-  ${RTK}/include
-  ${RTK}/include/kern
-  ${RTK}/include/arch/${ARCH}
-  ${RTK}/include/drivers
-  )
+# If we are building this project only
+# we look for installed rtkernel
+if (CMAKE_PROJECT_NAME STREQUAL IOLINKMASTER)
+    option(IOLINK_BUILD_RTKERNEL "Build rt-kernel from source instead of pre-built libraries" OFF)
+
+    if (IOLINK_BUILD_RTKERNEL)
+        add_subdirectory(${RTK} rt-kernel)
+    else()
+        find_package(rtkernel)
+        find_package(${BSP})
+    endif()
+endif()
+
+add_library(iolmaster_osal INTERFACE)
+
+target_sources(iolmaster_osal
+  INTERFACE
+  ${IOLINKMASTER_SOURCE_DIR}/iol_osal/rt-kernel/osal_irq.c
+  ${IOLINKMASTER_SOURCE_DIR}/iol_osal/rt-kernel/osal_spi.c
+)
+
+target_include_directories(iolmaster_osal
+  INTERFACE
+  ${IOLINKMASTER_SOURCE_DIR}/iol_osal/include
+)
+
+target_link_libraries(iolmaster_osal
+  INTERFACE
+  kern
+  dev
+  osal
+  ${BSP}
+)

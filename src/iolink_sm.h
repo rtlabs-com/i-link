@@ -13,6 +13,12 @@
  * full license information.
  ********************************************************************/
 
+/**
+ * @file
+ * @brief System Management layer
+ *
+ */
+
 #ifndef IOLINK_SM_H
 #define IOLINK_SM_H
 
@@ -51,7 +57,7 @@ extern "C" {
 #define IOL_MASTERCMD_DEVICE_OPERATE   0x99
 #define IOL_MASTERCMD_DEVICE_PREOP     0x9A
 
-/* Device paramter (Index assignment of data objects),
+/* Device parameter (Index assignment of data objects),
  * see IO-Link Interface Spec v1.1.3 chapter B.2.1
  */
 #define IOL_DEV_PARAMA_DIRECT_PAR_P1   0x0000

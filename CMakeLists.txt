@@ -13,13 +13,13 @@
 # full license information.
 #*******************************************************************/
 
-cmake_minimum_required (VERSION 3.14)
+cmake_minimum_required (VERSION 3.21)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/tools")
 project (IOLINKMASTER VERSION 0.1.0)
 
 # Set required standard level
-set (CMAKE_C_STANDARD 99)
+set (CMAKE_C_STANDARD 11)
 set (CMAKE_CXX_STANDARD 11)
 
 # Always use standard .o suffix
@@ -32,19 +32,26 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     CACHE PATH "Default install path" FORCE)
 endif()
 
+# Platform configuration
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${CMAKE_SYSTEM_NAME}.cmake)
+
+# Add Osal dependent on archtitecture
 include(AddOsal)
 include(CMakeDependentOption)
+
+include(GetGitRevision)
 
 # Options
 
 option (BUILD_SHARED_LIBS "Build shared library" OFF)
 option (LOG_ENABLE "Enable logging" OFF)
 option (BUILD_TESTING "Build unit tests" OFF)
+option (IOLINKMASTER_BUILD_DOCS "Build docs" OFF)
 
 set(LOG_STATE_VALUES "ON;OFF")
 set(LOG_LEVEL_VALUES "DEBUG;INFO;WARNING;ERROR")
 
-Set(IOLINK_NUM_PORTS "2"
+Set(IOLINK_NUM_PORTS "4"
     CACHE STRING "max number IO-Link ports")
 
 Set(IOLINK_NUM_DIAG_ENTRIES "64"
@@ -79,49 +86,47 @@ configure_file (
   ${IOLINKMASTER_BINARY_DIR}/src/options.h
   )
 
+# Source paths
+add_subdirectory (src)
+
 # Include paths
-include_directories(
+target_include_directories(iolmaster
+  PUBLIC
   ${IOLINKMASTER_BINARY_DIR}/include
   ${IOLINKMASTER_BINARY_DIR}/src
   ${IOLINKMASTER_SOURCE_DIR}/include
   ${IOLINKMASTER_SOURCE_DIR}/src
-  )
+)
 
-# Platform configuration
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${CMAKE_SYSTEM_NAME}.cmake)
-
-# Source paths
-add_subdirectory (src)
 if (BUILD_TESTING)
   include(CTest)
   add_subdirectory (test)
 endif (BUILD_TESTING)
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  add_subdirectory (samples/ifm_sample_app)
-endif ()
 
-# Doxygen configuration
-cmake_policy(SET CMP0057 NEW)
-find_package(Doxygen)
-if (DOXYGEN_FOUND)
-  set(DOXYGEN_OPTIMIZE_OUTPUT_FOR_C YES)
-  set(DOXYGEN_TYPEDEF_HIDES_STRUCT YES)
-  set(DOXYGEN_STRIP_CODE_COMMENTS NO)
-  set(DOXYGEN_MACRO_EXPANSION YES)
-  set(DOXYGEN_EXPAND_ONLY_PREDEF YES)
-  set(DOXYGEN_PREDEFINED IOLINKMASTER_EXPORT)
-  set(DOXYGEN_EXPAND_AS_DEFINED IOLINKMASTER_EXPORT)
-  set(DOXYGEN_COLLABORATION_GRAPH NO)
-  set(DOXYGEN_INCLUDE_GRAPH NO)
-  set(DOXYGEN_INCLUDED_BY_GRAPH NO)
-  set(DOXYGEN_RECURSIVE NO)
-  set(DOXYGEN_USE_MDFILE_AS_MAINPAGE README.md)
-  doxygen_add_docs(docs
-    README.md
-    include
-    src
+if (CMAKE_PROJECT_NAME STREQUAL IOLINKMASTER)
+  if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_subdirectory (samples/ifm_sample_app)
+    add_subdirectory (samples/irq_test)
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "rt-kernel")
+    add_subdirectory (samples/ifm_sample_app)
+  endif ()
+endif()
+
+if (IOLINKMASTER_BUILD_DOCS)
+  add_subdirectory(docs)
+
+  add_custom_target(codespell
+    COMMAND codespell
+        ${IOLINKMASTER_SOURCE_DIR}/docs/
+        ${IOLINKMASTER_SOURCE_DIR}/include/
+        ${IOLINKMASTER_SOURCE_DIR}/iol_osal/
+        ${IOLINKMASTER_SOURCE_DIR}/samples/
+        ${IOLINKMASTER_SOURCE_DIR}/src/
+        ${IOLINKMASTER_SOURCE_DIR}/test/
+        --skip *_build*
+    COMMENT "Running spell check on source code"
     )
-endif ()
+endif()
 
 include (InstallRequiredSystemLibraries)
 set (CPACK_RESOURCE_FILE_LICENSE "${IOLINKMASTER_SOURCE_DIR}/LICENSE.md")

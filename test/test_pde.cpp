@@ -33,14 +33,14 @@ class PDETest : public TestBase
    };
 };
 
-static inline iolink_pde_state_t pde_get_state (iolink_port_t * port)
+static iolink_pde_state_t pde_get_state (iolink_port_t * port)
 {
    iolink_pde_port_t * pde = iolink_get_pde_ctx (port);
 
    return pde->state;
 }
 
-static inline void pde_verify_smi_err (
+static void pde_verify_smi_err (
    iolink_arg_block_id_t exp_smi_ref_arg_id,
    iolink_arg_block_id_t exp_smi_exp_arg_id,
    iolink_smi_errortypes_t exp_errortype,
@@ -51,7 +51,7 @@ static inline void pde_verify_smi_err (
    EXPECT_EQ (exp_smi_joberror_cnt, mock_iolink_smi_joberror_cnt);
    EXPECT_EQ (exp_smi_ref_arg_id, mock_iolink_smi_ref_arg_block_id);
    iolink_arg_block_id_t arg_block_id =
-      mock_iolink_smi_arg_block->void_block.arg_block_id;
+      mock_iolink_smi_arg_block->id;
    EXPECT_EQ (IOLINK_ARG_BLOCK_ID_JOB_ERROR, arg_block_id);
 
    arg_block_joberror_t * job_error =
@@ -64,7 +64,7 @@ static inline void pde_verify_smi_err (
    EXPECT_EQ (exp_smi_exp_arg_id, exp_arg_block_id);
 }
 
-static inline void pd_start (iolink_port_t * port)
+static void pd_start (iolink_port_t * port)
 {
    /* Start PDE */
    EXPECT_EQ (PD_STATE_Inactive, pde_get_state (port));
@@ -103,7 +103,7 @@ TEST_F (PDETest, pde_PDIn_inactive)
    uint8_t exp_joberror_cnt = mock_iolink_smi_joberror_cnt + 1;
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = ref_arg_block_id;
+   arg_block_void.arg_block.id = ref_arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_PARAMETER_CONFLICT,
@@ -131,7 +131,7 @@ TEST_F (PDETest, pde_PDOut_inactive)
    uint8_t exp_joberror_cnt = mock_iolink_smi_joberror_cnt + 1;
 
    memset (&arg_block_pdout, 0, sizeof (arg_block_pdout_head_t) + 1);
-   arg_block_pdout.h.arg_block_id = ref_arg_block_id;
+   arg_block_pdout.h.arg_block.id = ref_arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_STATE_INVALID,
@@ -150,7 +150,7 @@ TEST_F (PDETest, pde_PDOut_inactive)
       exp_joberror_cnt);
 }
 
-static inline void pde_verify_smi_in (
+static void pde_verify_smi_in (
    iolink_arg_block_id_t exp_smi_ref_arg_id,
    iolink_arg_block_id_t exp_smi_arg_id,
    iolink_port_qualifier_info_t exp_port_qualifier_info,
@@ -160,7 +160,7 @@ static inline void pde_verify_smi_in (
 {
    EXPECT_EQ (exp_smi_ref_arg_id, mock_iolink_smi_ref_arg_block_id);
    iolink_arg_block_id_t arg_block_id =
-      mock_iolink_smi_arg_block->void_block.arg_block_id;
+      mock_iolink_smi_arg_block->id;
    EXPECT_EQ (exp_smi_arg_id, arg_block_id);
    EXPECT_EQ (exp_len, mock_iolink_smi_arg_block_len);
 
@@ -179,14 +179,14 @@ static inline void pde_verify_smi_in (
    }
 }
 
-static inline void pde_verify_smi_out (
+static void pde_verify_smi_out (
    iolink_arg_block_id_t exp_smi_ref_arg_id,
    iolink_arg_block_id_t exp_smi_arg_id,
    uint8_t exp_len)
 {
    EXPECT_EQ (exp_smi_ref_arg_id, mock_iolink_smi_ref_arg_block_id);
    iolink_arg_block_id_t arg_block_id =
-      mock_iolink_smi_arg_block->void_block.arg_block_id;
+      mock_iolink_smi_arg_block->id;
    EXPECT_EQ (exp_smi_arg_id, arg_block_id);
    EXPECT_EQ (exp_len, mock_iolink_smi_arg_block_len);
 }
@@ -207,7 +207,7 @@ uint8_t * iolink_arg_block_pdinout_pdout_data (arg_block_pdinout_t * arg_block)
    return &arg_block->data[2 + iolink_arg_block_pdinout_pdin_data_len (arg_block)];
 }
 
-static inline void pde_verify_smi_in_out (
+static void pde_verify_smi_in_out (
    iolink_arg_block_id_t exp_smi_ref_arg_id,
    iolink_arg_block_id_t exp_smi_arg_id,
    iolink_port_qualifier_info_t exp_port_qualifier_info,
@@ -220,7 +220,7 @@ static inline void pde_verify_smi_in_out (
 {
    EXPECT_EQ (exp_smi_ref_arg_id, mock_iolink_smi_ref_arg_block_id);
    iolink_arg_block_id_t arg_block_id =
-      mock_iolink_smi_arg_block->void_block.arg_block_id;
+      mock_iolink_smi_arg_block->id;
    EXPECT_EQ (exp_smi_arg_id, arg_block_id);
 
    if (exp_smi_arg_id == IOLINK_ARG_BLOCK_ID_PD_IN_OUT)
@@ -276,7 +276,7 @@ static void pde_smi_pdout (
    }
 
    memset (&arg_block_pdout, 0, arg_block_len);
-   arg_block_pdout.h.arg_block_id = ref_arg_block_id;
+   arg_block_pdout.h.arg_block.id = ref_arg_block_id;
    memcpy (arg_block_pdout.data, data, exp_data_len);
    arg_block_pdout.h.len = exp_data_len;
    arg_block_pdout.h.oe  = oe;
@@ -330,7 +330,7 @@ TEST_F (PDETest, pde_PDIn)
 
    pd_start (port);
 
-   arg_block_void.arg_block_id = ref_arg_block_id;
+   arg_block_void.arg_block.id = ref_arg_block_id;
    EXPECT_EQ (
       IOLINK_ERROR_NONE,
       SMI_PDIn_req (
@@ -395,7 +395,7 @@ TEST_F (PDETest, pde_PDInOut)
 
    EXPECT_EQ (IOLINK_ERROR_NONE, AL_Control_ind (port, IOLINK_CONTROLCODE_VALID));
 
-   arg_block_void.arg_block_id = ref_arg_block_id;
+   arg_block_void.arg_block.id = ref_arg_block_id;
    EXPECT_EQ (
       IOLINK_ERROR_NONE,
       SMI_PDInOut_req (
@@ -496,7 +496,7 @@ TEST_F (PDETest, pde_PDInOut_inactive)
    uint8_t exp_joberror_cnt = mock_iolink_smi_joberror_cnt + 1;
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = ref_arg_block_id;
+   arg_block_void.arg_block.id = ref_arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_STATE_INVALID,
@@ -527,7 +527,7 @@ TEST_F (PDETest, pde_PDIn_bad_argblock)
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
    /* Bad argblock type */
-   arg_block_void.arg_block_id = bad_arg_block_id;
+   arg_block_void.arg_block.id = bad_arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_PARAMETER_CONFLICT,
@@ -558,7 +558,7 @@ TEST_F (PDETest, pde_PDOut_bad_argblock)
 
    memset (&arg_block_pdout, 0, sizeof (arg_block_pdout_head_t));
    /* Bad argblock type */
-   arg_block_pdout.h.arg_block_id = bad_arg_block_id;
+   arg_block_pdout.h.arg_block.id = bad_arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_PARAMETER_CONFLICT,
@@ -589,7 +589,7 @@ TEST_F (PDETest, pde_PDInOut_bad_argblock)
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
    /* Bad argblock type */
-   arg_block_void.arg_block_id = bad_arg_block_id;
+   arg_block_void.arg_block.id = bad_arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_PARAMETER_CONFLICT,
@@ -619,7 +619,7 @@ TEST_F (PDETest, pde_PDIn_bad_argblock_len)
    pd_start (port);
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = ref_arg_block_id;
+   arg_block_void.arg_block.id = ref_arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_PARAMETER_CONFLICT,
@@ -669,7 +669,7 @@ TEST_F (PDETest, pde_PDOut_bad_argblock_len)
    pd_start (port);
 
    memset (&arg_block_pdout, 0, sizeof (arg_block_pdout_t));
-   arg_block_pdout.h.arg_block_id = ref_arg_block_id;
+   arg_block_pdout.h.arg_block.id = ref_arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_PARAMETER_CONFLICT,
@@ -719,7 +719,7 @@ TEST_F (PDETest, pde_PDInOut_bad_argblock_len)
    pd_start (port);
 
    memset (&arg_block_void, 0, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = ref_arg_block_id;
+   arg_block_void.arg_block.id = ref_arg_block_id;
 
    EXPECT_EQ (
       IOLINK_ERROR_PARAMETER_CONFLICT,

@@ -13,6 +13,12 @@
  * full license information.
  ********************************************************************/
 
+/**
+ * @file
+ * @brief Handler
+ *
+ */
+
 #ifndef IOLINK_MAIN_H
 #define IOLINK_MAIN_H
 
@@ -24,11 +30,6 @@ extern "C" {
 #include "iolink.h"
 
 #include <stdint.h>
-
-/**
- * @file
- *
- */
 
 /**
  * Structure containing all information for one IO-Link port.
@@ -277,7 +278,15 @@ iolink_transmission_rate_t iolink_get_transmission_rate (iolink_port_t * port);
 
 iolink_al_port_t * iolink_get_al_ctx (iolink_port_t * port);
 iolink_cm_port_t * iolink_get_cm_ctx (iolink_port_t * port);
+
+/**
+ * Get the data link layer context
+ *
+ * @param port           Port information
+ * @return               Pointer to data link layer struct
+ */
 iolink_dl_t * iolink_get_dl_ctx (iolink_port_t * port);
+
 iolink_ds_port_t * iolink_get_ds_ctx (iolink_port_t * port);
 iolink_ode_port_t * iolink_get_ode_ctx (iolink_port_t * port);
 iolink_pde_port_t * iolink_get_pde_ctx (iolink_port_t * port);

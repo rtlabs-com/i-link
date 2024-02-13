@@ -26,25 +26,11 @@
 #endif
 
 #include <sys/osal_cc.h>
-
-#ifndef COMPILETIME_ASSERT
-/* Assert that a compile-time constant expression is true. Trigger a
-   compilation error otherwise. The only use of the first two macros
-   is for the construction of the COMPILETIME_ASSERT() macro. */
-#define _COMPILETIME_ASSERT_SYMBOL_INNER(line_number)                          \
-   __COMPILETIME_ASSERT_##line_number
-#define _COMPILETIME_ASSERT_SYMBOL(line_number)                                \
-   _COMPILETIME_ASSERT_SYMBOL_INNER (line_number)
-#define COMPILETIME_ASSERT(constant_expression)                                \
-   typedef char _COMPILETIME_ASSERT_SYMBOL (                                   \
-      __LINE__)[((constant_expression) ? 1 : -1)]
-#endif
-
 #include <stdint.h>
 #include <stdbool.h>
+#include <assert.h>
 
 #ifdef __linux__
-#include <osal_drv.h>
 #include "../src/options.h"
 #else
 #include "options.h"
@@ -75,9 +61,16 @@ typedef uint8_t iolink_port_quality_info_t;   //!< Port Quality Information
  */
 typedef enum
 {
+   /** Inactive */
    iolink_mode_INACTIVE = 0,
+
+   /** Digital out */
    iolink_mode_DO       = 1,
+
+   /** Digital in */
    iolink_mode_DI       = 2,
+
+   /** IO-Link signal mode */
    iolink_mode_SDCI     = 3,
 } iolink_pl_mode_t;
 
@@ -351,10 +344,22 @@ typedef enum CC_PACKED iolink_master_type
 } iolink_master_type_t;
 CC_PACKED_END
 
+/* Generic arg-block
+
+ * This is the "base class" for all other arg-blocks. All arg-blocks structs
+ * must contain this as their first element.
+ */
+CC_PACKED_BEGIN
+typedef struct CC_PACKED arg_block
+{
+  iolink_arg_block_id_t id;
+} arg_block_t;
+CC_PACKED_END
+
 CC_PACKED_BEGIN
 typedef struct CC_PACKED arg_block_masterident_head
 {
-   iolink_arg_block_id_t arg_block_id; // IOLINK_ARG_BLOCK_ID_MASTERIDENT
+   arg_block_t arg_block; // IOLINK_ARG_BLOCK_ID_MASTERIDENT
    uint16_t vendorid;
    uint32_t masterid;
    iolink_master_type_t master_type;
@@ -374,7 +379,7 @@ CC_PACKED_END
 CC_PACKED_BEGIN
 typedef struct CC_PACKED arg_block_pdin_head
 {
-   iolink_arg_block_id_t arg_block_id; // IOLINK_ARG_BLOCK_ID_PD_IN
+   arg_block_t arg_block; // IOLINK_ARG_BLOCK_ID_PD_IN
    iolink_port_qualifier_info_t port_qualifier_info;
    uint8_t len;
 } arg_block_pdin_head_t;
@@ -390,7 +395,7 @@ CC_PACKED_END
 CC_PACKED_BEGIN
 typedef struct CC_PACKED arg_block_pdout_head
 {
-   iolink_arg_block_id_t arg_block_id; // IOLINK_ARG_BLOCK_ID_PD_OUT
+   arg_block_t arg_block; // IOLINK_ARG_BLOCK_ID_PD_OUT
    uint8_t oe;
    uint8_t len;
 } arg_block_pdout_head_t;
@@ -406,7 +411,7 @@ CC_PACKED_END
 CC_PACKED_BEGIN
 typedef struct CC_PACKED arg_block_pdinout_head
 {
-   iolink_arg_block_id_t arg_block_id; // IOLINK_ARG_BLOCK_ID_PD_IN_OUT
+   arg_block_t arg_block; // IOLINK_ARG_BLOCK_ID_PD_IN_OUT
    iolink_port_qualifier_info_t port_qualifier_info;
    uint8_t oe;
 } arg_block_pdinout_head_t;
@@ -428,7 +433,7 @@ CC_PACKED_END
 CC_PACKED_BEGIN
 typedef struct CC_PACKED arg_block_od
 {
-   iolink_arg_block_id_t arg_block_id; // IOLINK_ARG_BLOCK_ID_OD_{WR,RD}
+   arg_block_t arg_block; // IOLINK_ARG_BLOCK_ID_OD_{WR,RD}
    uint16_t index;
    uint8_t subindex;
    uint8_t data[];
@@ -438,7 +443,7 @@ CC_PACKED_END
 CC_PACKED_BEGIN
 typedef struct CC_PACKED arg_block_ds_data
 {
-   iolink_arg_block_id_t arg_block_id; // IOLINK_ARG_BLOCK_ID_DS_DATA
+   arg_block_t arg_block; // IOLINK_ARG_BLOCK_ID_DS_DATA
    uint32_t checksum;
    uint16_t vid;
    uint32_t did;
@@ -465,7 +470,7 @@ CC_PACKED_END
 CC_PACKED_BEGIN
 typedef struct CC_PACKED arg_block_portconfiglist
 {
-   iolink_arg_block_id_t arg_block_id; // IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST
+   arg_block_t arg_block; // IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST
    portconfiglist_t configlist;
 } arg_block_portconfiglist_t;
 CC_PACKED_END
@@ -480,7 +485,7 @@ CC_PACKED_END
 CC_PACKED_BEGIN
 typedef struct CC_PACKED arg_block_portstatuslist
 {
-   iolink_arg_block_id_t arg_block_id; // IOLINK_ARG_BLOCK_ID_PORT_STATUS_LIST
+   arg_block_t arg_block; // IOLINK_ARG_BLOCK_ID_PORT_STATUS_LIST
    iolink_port_status_info_t port_status_info;
    iolink_port_quality_info_t port_quality_info;
    uint8_t revision_id;
@@ -497,7 +502,7 @@ CC_PACKED_END
 CC_PACKED_BEGIN
 typedef struct CC_PACKED arg_block_devevent
 {
-   iolink_arg_block_id_t arg_block_id; // IOLINK_ARG_BLOCK_ID_DEV_EVENT
+   arg_block_t arg_block; // IOLINK_ARG_BLOCK_ID_DEV_EVENT
    diag_entry_t diag_entry[6];         // TODO diag_entry_t diag_entry
    uint8_t event_count;                // TODO remove
 } arg_block_devevent_t;
@@ -506,105 +511,100 @@ CC_PACKED_END
 CC_PACKED_BEGIN
 typedef struct CC_PACKED arg_block_portevent
 {
-   iolink_arg_block_id_t arg_block_id; // IOLINK_ARG_BLOCK_ID_PORT_EVENT
+   arg_block_t arg_block; // IOLINK_ARG_BLOCK_ID_PORT_EVENT
    diag_entry_t event;
 } arg_block_portevent_t;
 CC_PACKED_END
 
 typedef struct arg_block_void
 {
-   iolink_arg_block_id_t arg_block_id; // IOLINK_ARG_BLOCK_ID_VOID_BLOCK
+   arg_block_t arg_block; // IOLINK_ARG_BLOCK_ID_VOID_BLOCK
 } arg_block_void_t;
 
 CC_PACKED_BEGIN
 typedef struct CC_PACKED arg_block_joberror
 {
-   iolink_arg_block_id_t arg_block_id; // IOLINK_ARG_BLOCK_ID_JOB_ERROR
+   arg_block_t arg_block; // IOLINK_ARG_BLOCK_ID_JOB_ERROR
    iolink_arg_block_id_t exp_arg_block_id;
    iolink_smi_errortypes_t error;
 } arg_block_joberror_t;
 CC_PACKED_END
 
-CC_PACKED_BEGIN
-typedef struct CC_PACKED arg_block
-{
-   union
-   {
-      arg_block_masterident_t masterident;
-      arg_block_pdin_t pdin;
-      arg_block_pdout_t pdout;
-      arg_block_pdinout_t pdinout;
-      arg_block_od_t od;
-      arg_block_ds_data_t ds_data;
-      arg_block_portconfiglist_t port_cfg_list;
-      arg_block_portstatuslist_t port_status_list;
-      arg_block_devevent_t dev_event;
-      arg_block_portevent_t port_event;
-      arg_block_void_t void_block;
-      arg_block_joberror_t error_block;
-   };
-} arg_block_t;
-CC_PACKED_END
+static_assert (sizeof (iolink_portmode_t) == 1, "");
+static_assert (sizeof (iolink_validation_check_t) == 1, "");
+static_assert (sizeof (iolink_iq_behavior_t) == 1, "");
+static_assert (sizeof (iolink_arg_block_id_t) == 2, "");
+static_assert (sizeof (iolink_port_status_info_t) == 1, "");
+static_assert (sizeof (iolink_transmission_rate_t) == 1, "");
 
-COMPILETIME_ASSERT (sizeof (iolink_portmode_t) == 1);
-COMPILETIME_ASSERT (sizeof (iolink_validation_check_t) == 1);
-COMPILETIME_ASSERT (sizeof (iolink_iq_behavior_t) == 1);
-COMPILETIME_ASSERT (sizeof (iolink_arg_block_id_t) == 2);
-COMPILETIME_ASSERT (sizeof (iolink_port_status_info_t) == 1);
-COMPILETIME_ASSERT (sizeof (iolink_transmission_rate_t) == 1);
+static_assert (sizeof (diag_entry_t) == 3, "");
 
-COMPILETIME_ASSERT (sizeof (diag_entry_t) == 3);
-
-COMPILETIME_ASSERT (sizeof (arg_block_masterident_head_t) == 12);
-COMPILETIME_ASSERT (
+static_assert (sizeof (arg_block_masterident_head_t) == 12, "");
+static_assert (
    sizeof (arg_block_masterident_t) ==
-   sizeof (arg_block_masterident_head_t) +
-      sizeof (iolink_port_types_t) * IOLINK_NUM_PORTS);
+      sizeof (arg_block_masterident_head_t) +
+         sizeof (iolink_port_types_t) * IOLINK_NUM_PORTS,
+   "");
 
-COMPILETIME_ASSERT (sizeof (arg_block_pdin_head_t) == 4);
-COMPILETIME_ASSERT (
+static_assert (sizeof (arg_block_pdin_head_t) == 4, "");
+static_assert (
    sizeof (arg_block_pdin_t) ==
-   sizeof (arg_block_pdin_head_t) + IOLINK_PD_MAX_SIZE);
+      sizeof (arg_block_pdin_head_t) + IOLINK_PD_MAX_SIZE,
+   "");
 
-COMPILETIME_ASSERT (sizeof (arg_block_pdout_head_t) == 4);
-COMPILETIME_ASSERT (
+static_assert (sizeof (arg_block_pdout_head_t) == 4, "");
+static_assert (
    sizeof (arg_block_pdout_t) ==
-   sizeof (arg_block_pdout_head_t) + IOLINK_PD_MAX_SIZE);
+      sizeof (arg_block_pdout_head_t) + IOLINK_PD_MAX_SIZE,
+   "");
 
-COMPILETIME_ASSERT (sizeof (arg_block_pdinout_head_t) == 4);
-COMPILETIME_ASSERT (
+static_assert (sizeof (arg_block_pdinout_head_t) == 4, "");
+static_assert (
    sizeof (arg_block_pdinout_t) ==
-   sizeof (arg_block_pdinout_head_t) + 2 + 2 * IOLINK_PD_MAX_SIZE);
+      sizeof (arg_block_pdinout_head_t) + 2 + 2 * IOLINK_PD_MAX_SIZE,
+   "");
 
-COMPILETIME_ASSERT (sizeof (arg_block_od_t) == 5);
-COMPILETIME_ASSERT (sizeof (arg_block_ds_data_t) == 2 + 12);
+static_assert (sizeof (arg_block_od_t) == 5, "");
+static_assert (sizeof (arg_block_ds_data_t) == 2 + 12, "");
 
-COMPILETIME_ASSERT (sizeof (portconfiglist_t) == 12);
-COMPILETIME_ASSERT (
-   sizeof (arg_block_portconfiglist_t) == 2 + sizeof (portconfiglist_t));
+static_assert (sizeof (portconfiglist_t) == 12, "");
+static_assert (
+   sizeof (arg_block_portconfiglist_t) == 2 + sizeof (portconfiglist_t),
+   "");
 
-COMPILETIME_ASSERT (
-   sizeof (arg_block_portstatuslist_t) == sizeof (diag_entry_t *) + 15);
-COMPILETIME_ASSERT (sizeof (arg_block_devevent_t) == 3 + sizeof (diag_entry_t) * 6);
-COMPILETIME_ASSERT (sizeof (arg_block_portevent_t) == 5);
-COMPILETIME_ASSERT (sizeof (arg_block_void_t) == 2);
-COMPILETIME_ASSERT (sizeof (arg_block_joberror_t) == 6);
+static_assert (
+   sizeof (arg_block_portstatuslist_t) == sizeof (diag_entry_t *) + 15,
+   "");
+static_assert (sizeof (arg_block_devevent_t) == 3 + sizeof (diag_entry_t) * 6, "");
+static_assert (sizeof (arg_block_portevent_t) == 5, "");
+static_assert (sizeof (arg_block_void_t) == 2, "");
+static_assert (sizeof (arg_block_joberror_t) == 6, "");
 
-/* arg_block_pdinout_t is the largest ArgBlock we got */
-COMPILETIME_ASSERT (sizeof (arg_block_t) == sizeof (arg_block_pdinout_t));
+typedef struct iolink_hw_drv iolink_hw_drv_t;
 
+/** Port configuration */
 typedef struct iolink_port_cfg
 {
+   /** Port name */
    const char * name;
+
+   /** Port mode */
    iolink_pl_mode_t * mode;
+
+   /** Driver */
+   iolink_hw_drv_t * drv;
+
+   /** User argument */
+   void * arg;
 } iolink_port_cfg_t;
 
 /** IO-Link master stack configuration */
 typedef struct iolink_m_cfg
 {
-   void * cb_arg; /* Callback opaque argument */
+   /** Callback opaque argument */
+   void * cb_arg;
 
-   /* SMI cnf/ind callback */
+   /** SMI cnf/ind callback function */
    void (*cb_smi) (
       void * arg,
       uint8_t portnumber,
@@ -612,19 +612,29 @@ typedef struct iolink_m_cfg
       uint16_t arg_block_len,
       arg_block_t * arg_block);
 
-   /* Periodic data callback */
+   /** Periodic data callback function */
    void (*cb_pd) (
       uint8_t portnumber,
       void * arg,
       uint8_t data_len,
       const uint8_t * data);
 
+   /** Number of connected IO-Link ports */
    uint8_t port_cnt;
+
+   /** Configuration (name and mode) of the connected IO-Link ports */
    const iolink_port_cfg_t * port_cfgs;
 
+   /** Priority of the master thread */
    unsigned int master_thread_prio;
+
+   /** Stack size (in bytes) of the master thread */
    size_t master_thread_stack_size;
+
+   /** Priority of the DL thread */
    unsigned int dl_thread_prio;
+
+   /** Stack size (in bytes) of the DL thread */
    size_t dl_thread_stack_size;
 } iolink_m_cfg_t;
 
@@ -639,21 +649,12 @@ typedef struct iolink_m_cfg
  */
 iolink_m_t * iolink_m_init (const iolink_m_cfg_t * m_cfg);
 
+/**
+ * De-initialise IO-Link master
+ *
+ * @param m          Master information struct
+ */
 void iolink_m_deinit (iolink_m_t ** m);
-
-uint8_t iolink_set_config (
-   uint8_t portnumber,
-   uint16_t vid,
-   uint32_t did,
-   uint8_t cycle_time,
-   iolink_portmode_t portmode,
-   iolink_validation_check_t validation,
-   char * serial_number);
-uint8_t iolink_reset_events (uint8_t portnumber);
-uint8_t iolink_get_events (
-   uint8_t portnumber,
-   uint8_t * diag_count,
-   diag_entry_t * diag_entry);
 
 iolink_error_t SMI_MasterIdentification_req (
    uint8_t portnumber,
@@ -661,83 +662,186 @@ iolink_error_t SMI_MasterIdentification_req (
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
+/**
+ * Set port configuration
+ *
+ * @param portnumber          Port number
+ * @param exp_arg_block_id    Block ID
+ * @param arg_block_len       Block length
+ * @param arg_block           Block
+ * @return                    Error type
+ */
 iolink_error_t SMI_PortConfiguration_req (
    uint8_t portnumber,
    iolink_arg_block_id_t exp_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
+/**
+ * Get port configuration
+ *
+ * @param portnumber          Port number
+ * @param exp_arg_block_id    Block ID
+ * @param arg_block_len       Block length
+ * @param arg_block           Block
+ * @return                    Error type
+ */
 iolink_error_t SMI_ReadbackPortConfiguration_req (
    uint8_t portnumber,
    iolink_arg_block_id_t exp_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
+/**
+ * Get port status
+ *
+ * @param portnumber          Port number
+ * @param exp_arg_block_id    Block ID
+ * @param arg_block_len       Block length
+ * @param arg_block           Block
+ * @return                    Error type
+ */
 iolink_error_t SMI_PortStatus_req (
    uint8_t portnumber,
    iolink_arg_block_id_t exp_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
+/**
+ * Retrieve parameters from data storage
+ *
+ * @param portnumber          Port number
+ * @param exp_arg_block_id    Block ID
+ * @param arg_block_len       Block length
+ * @param arg_block           Block
+ * @return                    Error type
+ */
 iolink_error_t SMI_DSToParServ_req (
    uint8_t portnumber,
    iolink_arg_block_id_t exp_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
+/**
+ * Send parameters to data storage
+ *
+ * @param portnumber          Port number
+ * @param exp_arg_block_id    Block ID
+ * @param arg_block_len       Block length
+ * @param arg_block           Block
+ * @return                    Error type
+ */
 iolink_error_t SMI_ParServToDS_req (
    uint8_t portnumber,
    iolink_arg_block_id_t exp_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
+/**
+ * Read acyclic data from device
+ *
+ * @param portnumber          Port number
+ * @param exp_arg_block_id    Block ID
+ * @param arg_block_len       Block length
+ * @param arg_block           Block
+ * @return                    Error type
+ */
 iolink_error_t SMI_DeviceRead_req (
    uint8_t portnumber,
    iolink_arg_block_id_t exp_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
+/**
+ * Write acyclic data to device
+ *
+ * @param portnumber          Port number
+ * @param exp_arg_block_id    Block ID
+ * @param arg_block_len       Block length
+ * @param arg_block           Block
+ * @return                    Error type
+ */
 iolink_error_t SMI_DeviceWrite_req (
    uint8_t portnumber,
    iolink_arg_block_id_t exp_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
+/**
+ * Batch read parameters from device
+ *
+ * @param portnumber          Port number
+ * @param exp_arg_block_id    Block ID
+ * @param arg_block_len       Block length
+ * @param arg_block           Block
+ * @return                    Error type
+ */
 iolink_error_t SMI_ParamReadBatch_req (
    uint8_t portnumber,
    iolink_arg_block_id_t exp_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
+/**
+ * Batch write parameters from device
+ *
+ * @param portnumber          Port number
+ * @param exp_arg_block_id    Block ID
+ * @param arg_block_len       Block length
+ * @param arg_block           Block
+ * @return                    Error type
+ */
 iolink_error_t SMI_ParamWriteBatch_req (
    uint8_t portnumber,
    iolink_arg_block_id_t exp_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
+/**
+ * Read cyclic data from the device
+ *
+ * @param portnumber          Port number
+ * @param exp_arg_block_id    Block ID
+ * @param arg_block_len       Block length
+ * @param arg_block           Block
+ * @return                    Error type
+ */
 iolink_error_t SMI_PDIn_req (
    uint8_t portnumber,
    iolink_arg_block_id_t exp_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
+/**
+ * Write cyclic data to the device
+ *
+ * @param portnumber          Port number
+ * @param exp_arg_block_id    Block ID
+ * @param arg_block_len       Block length
+ * @param arg_block           Block
+ * @return                    Error type
+ */
 iolink_error_t SMI_PDOut_req (
    uint8_t portnumber,
    iolink_arg_block_id_t exp_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
+/**
+ * Read and write cyclic data to the device
+ *
+ * @param portnumber          Port number
+ * @param exp_arg_block_id    Block ID
+ * @param arg_block_len       Block length
+ * @param arg_block           Block
+ * @return                    Error type
+ */
 iolink_error_t SMI_PDInOut_req (
    uint8_t portnumber,
    iolink_arg_block_id_t exp_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
-iolink_error_t SMI_ParServToDS_req (
-   uint8_t portnumber,
-   iolink_arg_block_id_t exp_arg_block_id,
-   uint16_t arg_block_len,
-   arg_block_t * arg_block);
 #ifdef __cplusplus
 }
 #endif

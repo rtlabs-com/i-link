@@ -24,9 +24,9 @@
 #include "iolink_ifm.h"
 
 #define EVENT_PD_0           BIT (0)
-#define EVENT_COMLOST_0      BIT (4)
-#define EVENT_PORTE_0        BIT (8)
-#define EVENT_RETRY_ESTCOM_0 BIT (12)
+#define EVENT_COMLOST_0      BIT (8)
+#define EVENT_PORTE_0        BIT (16)
+#define EVENT_RETRY_ESTCOM_0 BIT (24)
 
 #define VERIFY_ITEM(structure, item, portnumber, text)                         \
    if (structure->item != item)                                                \
@@ -41,6 +41,8 @@
          (unsigned int)structure->item);                                       \
       return 1;                                                                \
    }
+
+iolink_app_master_ctx_t iolink_app_master;
 
 static void SMI_cnf_cb (
    void * arg,
@@ -57,7 +59,7 @@ static uint8_t verify_smi_masterident (
    arg_block_void_t arg_block_void;
 
    bzero (&arg_block_void, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = IOLINK_ARG_BLOCK_ID_VOID_BLOCK;
+   arg_block_void.arg_block.id = IOLINK_ARG_BLOCK_ID_VOID_BLOCK;
 
    iolink_error_t err = SMI_MasterIdentification_req (
       app_port->portnumber,
@@ -80,8 +82,7 @@ static uint8_t verify_smi_masterident (
 
 static void iolink_app_init_port (
    iolink_app_port_ctx_t * app_port,
-   iolink_m_cfg_t * m_cfg,
-   const iolink_port_cfg_t * port_cfg)
+   iolink_m_cfg_t * m_cfg)
 {
    iolink_port_t * port =
       iolink_get_port (iolink_app_master.master, app_port->portnumber);
@@ -91,7 +92,6 @@ static void iolink_app_init_port (
    app_port->pdout_mtx  = os_mutex_create();
    iolink_dl_instantiate (
       port,
-      port_cfg,
       m_cfg->dl_thread_prio,
       m_cfg->dl_thread_stack_size);
 
@@ -115,7 +115,7 @@ void iolink_common_config (
    iolink_portmode_t portmode,
    iolink_validation_check_t validation)
 {
-   port_cfg->arg_block_id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
+   port_cfg->arg_block.id                 = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
    port_cfg->configlist.port_cycle_time   = cycle_time;
    port_cfg->configlist.vendorid          = vid;
    port_cfg->configlist.deviceid          = did;
@@ -213,7 +213,7 @@ uint8_t get_port_status (iolink_app_port_ctx_t * app_port)
    arg_block_void_t arg_block_void;
 
    bzero (&arg_block_void, sizeof (arg_block_void_t));
-   arg_block_void.arg_block_id = IOLINK_ARG_BLOCK_ID_VOID_BLOCK;
+   arg_block_void.arg_block.id = IOLINK_ARG_BLOCK_ID_VOID_BLOCK;
 
    iolink_error_t err = SMI_PortStatus_req (
       app_port->portnumber,
@@ -315,11 +315,7 @@ static void PD_cb (
 
 static void iolink_retry_estcom (os_timer_t * tmr, void * arg)
 {
-#if (__SIZEOF_POINTER__ == 4)
-   uint8_t port_idx = ((uint32_t)arg) & 0xFF;
-#elif (__SIZEOF_POINTER__ == 8)
-   uint8_t port_idx = ((uint64_t)arg) & 0xFF;
-#endif
+   uint8_t port_idx = ((uintptr_t)arg) & 0xFF;
 
    iolink_app_master.app_port[port_idx].app_port_state =
       IOL_STATE_WU_RETRY_WAIT_TSD;
@@ -333,7 +329,7 @@ void iolink_handler (iolink_m_cfg_t m_cfg)
    iolink_pl_mode_t port_mode[IOLINK_NUM_PORTS];
    os_timer_t * iolink_tsd_tmr[IOLINK_NUM_PORTS] = {NULL};
 
-   for (i = 0; i < IOLINK_NUM_PORTS; i++)
+   for (i = 0; i < m_cfg.port_cnt; i++)
    {
       if (*m_cfg.port_cfgs[i].mode == iolink_mode_SDCI)
       {
@@ -369,8 +365,7 @@ void iolink_handler (iolink_m_cfg_t m_cfg)
          iolink_app_master.app_port[i].app_master = &iolink_app_master;
          iolink_app_init_port (
             &iolink_app_master.app_port[i],
-            &m_cfg,
-            &m_cfg.port_cfgs[i]);
+            &m_cfg);
       }
 
       /* Config allocated port */
@@ -480,7 +475,7 @@ void iolink_handler (iolink_m_cfg_t m_cfg)
    }
 }
 
-static inline void handle_smi_deviceevent (
+static void handle_smi_deviceevent (
    iolink_app_port_ctx_t * app_port,
    arg_block_devevent_t * arg_block_devevent)
 {
@@ -503,7 +498,7 @@ static inline void handle_smi_deviceevent (
    }
 }
 
-static inline void handle_smi_portevent (
+static void handle_smi_portevent (
    iolink_app_port_ctx_t * app_port,
    diag_entry_t * event)
 {
@@ -583,7 +578,7 @@ static inline void handle_smi_portevent (
    }
 }
 
-static inline void handle_smi_joberror (
+static void handle_smi_joberror (
    iolink_app_port_ctx_t * app_port,
    iolink_arg_block_id_t ref_arg_block_id,
    arg_block_joberror_t * arg_block_err)
@@ -636,7 +631,7 @@ static void SMI_cnf_cb (
 
    CC_ASSERT (arg_block != NULL);
 
-   switch (arg_block->void_block.arg_block_id)
+   switch (arg_block->id)
    {
    case IOLINK_ARG_BLOCK_ID_JOB_ERROR:
       handle_smi_joberror (
@@ -663,10 +658,11 @@ static void SMI_cnf_cb (
       os_event_set (app_port->event, SMI_PORTSTATUS_CNF);
       break;
    }
-   case IOLINK_ARG_BLOCK_ID_PORT_EVENT:
+   case IOLINK_ARG_BLOCK_ID_PORT_EVENT:;
       /* SMI_PortEvent_ind */
+      arg_block_portevent_t * arg_block_portevent = (arg_block_portevent_t *)arg_block;
       LOG_DEBUG (LOG_STATE_ON, "%s: IOLINK_ARG_BLOCK_ID_PORT_EVENT\n", __func__);
-      handle_smi_portevent (app_port, &arg_block->port_event.event);
+      handle_smi_portevent (app_port, &arg_block_portevent->event);
       break;
    case IOLINK_ARG_BLOCK_ID_DEV_EVENT:
       /* SMI_DeviceEvent_ind */
@@ -679,21 +675,23 @@ static void SMI_cnf_cb (
       app_port->param_read.data_len = arg_block_len - sizeof (arg_block_od_t);
       os_event_set (app_port->event, SMI_READ_CNF);
       break;
-   case IOLINK_ARG_BLOCK_ID_PD_IN:
+   case IOLINK_ARG_BLOCK_ID_PD_IN:;
       /* SMI_PDIn_cnf */
-      memcpy (app_port->pdin.data, arg_block->pdin.data, arg_block->pdin.h.len);
-      app_port->pdin.data_len = arg_block->pdin.h.len;
-      app_port->pdin.pqi      = arg_block->pdin.h.port_qualifier_info;
+      arg_block_pdin_t * arg_block_pdin = (arg_block_pdin_t *)arg_block;
+      memcpy (app_port->pdin.data, arg_block_pdin->data, arg_block_pdin->h.len);
+      app_port->pdin.data_len = arg_block_pdin->h.len;
+      app_port->pdin.pqi      = arg_block_pdin->h.port_qualifier_info;
       break;
    case IOLINK_ARG_BLOCK_ID_PD_IN_OUT:
       /* SMI_PDInOut_cnf */
       LOG_DEBUG (LOG_STATE_ON, "%s: IOLINK_ARG_BLOCK_ID_PD_IN_OUT\n", __func__);
       break;
-   case IOLINK_ARG_BLOCK_ID_MASTERIDENT:
+   case IOLINK_ARG_BLOCK_ID_MASTERIDENT:;
       /* SMI_MasterIdentification_cnf() */
+      arg_block_masterident_t * arg_block_masterident = (arg_block_masterident_t *)arg_block;
       LOG_DEBUG (LOG_STATE_ON, "%s: IOLINK_ARG_BLOCK_ID_MASTERIDENT\n", __func__);
-      app_m->vendorid = arg_block->masterident.h.vendorid;
-      app_m->masterid = arg_block->masterident.h.masterid;
+      app_m->vendorid = arg_block_masterident->h.vendorid;
+      app_m->masterid = arg_block_masterident->h.masterid;
       os_event_set (app_port->event, SMI_MASTERIDENT_CNF);
       break;
    default:
@@ -735,7 +733,7 @@ static void SMI_cnf_cb (
             __func__,
             portnumber,
             ref_arg_block_id,
-            arg_block->void_block.arg_block_id);
+            arg_block->id);
          break;
       }
    }

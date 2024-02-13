@@ -13,6 +13,12 @@
  * full license information.
  ********************************************************************/
 
+/**
+ * @file
+ * @brief On-request Data Exchange layer
+ *
+ */
+
 #ifndef IOLINK_ODE_H
 #define IOLINK_ODE_H
 

@@ -1,0 +1,106 @@
+pipeline {
+   agent any
+   environment {
+      CC="gcc-9"
+      CXX="g++-9"
+      PATH="/opt/rt-tools/compilers/arm-eabi/bin:${env.PATH}"
+   }
+
+   stages {
+      stage('prepare') {
+         steps {
+            // clean working directory
+            sh 'git clean -xdf'
+         }
+      }
+      stage('build') {
+         steps {
+            withPythonEnv('python3') {
+               // linux
+               sh 'cmake --preset linux'
+               sh 'cmake --build --preset linux'
+            }
+         }
+      }
+      stage('get project version') {
+         steps {
+            dir('build.linux') {
+               script {
+                  def systemInformation = sh(script: 'cmake --system-information', returnStdout: true)
+                  def versionLine = systemInformation =~ /CMAKE_PROJECT_VERSION:STATIC=(.*)/
+                  if (versionLine) {
+                     env.PROJECT_VERSION = versionLine[0][1].trim()
+                  }
+               }
+            }
+         }
+      }
+      stage('docs') {
+         when {
+            expression { fileExists('docs') }
+         }
+         steps {
+            withPythonEnv('python3') {
+               // prepare build environment
+               sh 'pip install -r docs/requirements.txt'
+               // docs
+               sh 'cmake --preset docs'
+               sh 'cmake --build --preset docs'
+               publishHTML([
+                  allowMissing: false,
+                  alwaysLinkToLastBuild: false,
+                  keepAll: false,
+                  reportDir: 'build.docs/docs/sphinx/html/',
+                  reportFiles: 'index.html',
+                  reportName: 'Documentation']
+               )
+               archiveArtifacts(
+                  artifacts: 'build.docs/docs/ilink_docs_*.zip'
+               )
+               zip(dir: 'build.docs/docs/sphinx',
+                  glob: 'html/**',
+                  zipFile: 'sphinx-html.zip'
+               )
+               stash(
+                  name: "sphinx-html",
+                  includes: 'sphinx-html.zip'
+               )
+            }
+         }
+      }
+      stage('test') {
+         steps {
+            // linux
+            sh 'ctest --preset linux --output-junit test-results.xml'
+         }
+      }
+      stage('publish') {
+         when {
+            environment name: "GERRIT_EVENT_TYPE", value: "change-merged"
+         }
+         steps {
+            unstash(name: "sphinx-html")
+            nexusArtifactUploader(
+               nexusVersion: "nexus2",
+               protocol: "http",
+               nexusUrl: "qa.rt-labs.intra:8081/nexus",
+               groupId: "rt-labs.i-link",
+               version: "${env.PROJECT_VERSION}-SNAPSHOT",
+               repository: "snapshots",
+               credentialsId: "nexus-admin-credentials",
+               artifacts: [
+                  [artifactId: "i-link-docs",
+                     classifier: "",
+                     file: "sphinx-html.zip",
+                     type: "zip"]
+               ]
+            )
+         }
+      }
+   }
+   post {
+      always {
+         junit '**/test-results.xml'
+      }
+   }
+}

@@ -22,14 +22,14 @@
 #include "test_util.h"
 
 // Helpers
-static inline iolink_ds_state_t ds_get_state (iolink_port_t * port)
+static iolink_ds_state_t ds_get_state (iolink_port_t * port)
 {
    iolink_ds_port_t * ds = iolink_get_ds_ctx (port);
 
    return ds->state;
 }
 
-static inline iolink_error_t par_serv_to_ds (
+static iolink_error_t par_serv_to_ds (
    iolink_port_t * port,
    uint16_t len,
    const uint8_t * data,
@@ -44,7 +44,7 @@ static inline iolink_error_t par_serv_to_ds (
    arg_block_ds_data = (arg_block_ds_data_t *)buf;
    memcpy (arg_block_ds_data->ds_data, data, len);
 
-   arg_block_ds_data->arg_block_id = IOLINK_ARG_BLOCK_ID_DS_DATA;
+   arg_block_ds_data->arg_block.id = IOLINK_ARG_BLOCK_ID_DS_DATA;
    arg_block_ds_data->vid          = vid;
    arg_block_ds_data->did          = did;
 
@@ -55,7 +55,7 @@ static inline iolink_error_t par_serv_to_ds (
       (arg_block_t *)arg_block_ds_data);
 }
 
-static inline void ds_verify_id (iolink_port_t * port, uint16_t vid, uint32_t did)
+static void ds_verify_id (iolink_port_t * port, uint16_t vid, uint32_t did)
 {
    iolink_ds_port_t * ds = iolink_get_ds_ctx (port);
 
@@ -63,7 +63,7 @@ static inline void ds_verify_id (iolink_port_t * port, uint16_t vid, uint32_t di
    EXPECT_EQ (did, ds->master_ds.did);
 }
 
-static inline void ds_check_fault (
+static void ds_check_fault (
    iolink_port_t * port,
    iolink_ds_fault_t expected_fault)
 {
@@ -81,7 +81,7 @@ static inline void ds_check_fault (
    EXPECT_EQ (0, mock_iolink_ds_ready_cnt);
 }
 
-static inline void ds_state_0_to_4 (
+static void ds_state_0_to_4 (
    iolink_port_t * port,
    uint16_t len,
    const uint8_t * data,
@@ -116,7 +116,7 @@ static inline void ds_state_0_to_4 (
    EXPECT_EQ (1, mock_iolink_al_read_req_cnt);
 }
 
-static inline void ds_state_0_to_5 (
+static void ds_state_0_to_5 (
    iolink_port_t * port,
    uint16_t len,
    const uint8_t * data,
@@ -132,7 +132,7 @@ static inline void ds_state_0_to_5 (
    mock_iolink_job.callback (&mock_iolink_job);
 }
 
-static inline void ds_state_0_to_6 (
+static void ds_state_0_to_6 (
    iolink_port_t * port,
    uint16_t len,
    const uint8_t * data,
@@ -151,7 +151,7 @@ static inline void ds_state_0_to_6 (
    mock_iolink_job.callback (&mock_iolink_job);
 }
 
-static inline void ds_state_0_to_10 (
+static void ds_state_0_to_10 (
    iolink_port_t * port,
    uint16_t len,
    const uint8_t * data,
@@ -323,7 +323,7 @@ TEST_F (DSTest, DS_download)
       IOLINK_VALIDATION_CHECK_V11_RESTORE,
       state_property);
 
-   for (i = 0; i < 3; i++) // Number of paramters in DS
+   for (i = 0; i < 3; i++) // Number of parameters in DS
    {
       EXPECT_EQ (DS_STATE_Write_Parameter, ds_get_state (port));
       mock_iolink_al_write_cnf_cb (port, IOLINK_SMI_ERRORTYPE_NONE);
@@ -386,7 +386,7 @@ TEST_F (DSTest, DS_download_upload_req)
       IOLINK_VALIDATION_CHECK_V11_RESTORE,
       state_property);
 
-   for (i = 0; i < 3; i++) // Number of paramters in DS
+   for (i = 0; i < 3; i++) // Number of parameters in DS
    {
       EXPECT_EQ (DS_STATE_Write_Parameter, ds_get_state (port));
       mock_iolink_al_write_cnf_cb (port, IOLINK_SMI_ERRORTYPE_NONE);
@@ -1282,7 +1282,7 @@ TEST_F (DSTest, DS_Fault_DL_Download_Done_Com_Err)
       IOLINK_VALIDATION_CHECK_V11_BAK_RESTORE,
       state_property);
 
-   for (i = 0; i < 3; i++) // Number of paramters in DS
+   for (i = 0; i < 3; i++) // Number of parameters in DS
    {
       EXPECT_EQ (DS_STATE_Write_Parameter, ds_get_state (port));
       mock_iolink_al_write_cnf_cb (port, IOLINK_SMI_ERRORTYPE_NONE);

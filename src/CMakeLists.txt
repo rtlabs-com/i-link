@@ -15,8 +15,11 @@
 
 include(GenerateExportHeader)
 
+add_library (iolmaster)
+
 # NOTE: add headers to make them show up in an IDE
-set (IOLINKMASTER_SOURCES
+target_sources(iolmaster
+  PRIVATE
   ${IOLINKMASTER_SOURCE_DIR}/include/iolink_max14819.h
   iolink_al.c
   iolink_al.h
@@ -36,9 +39,7 @@ set (IOLINKMASTER_SOURCES
   iolink_pde.h
   iolink_pl.c
   iolink_pl.h
-  iolink_pl_hw.c
   iolink_pl_hw_drv.h
-  iolink_pl_hw.h
   iolink_sm.c
   iolink_sm.h
   iolink_types.h
@@ -46,21 +47,12 @@ set (IOLINKMASTER_SOURCES
   ${IOLINKMASTER_BINARY_DIR}/include/version.h
   )
 
-add_library (iolmaster
-  ${IOLINKMASTER_SOURCES}
-  ${OSAL_SOURCES}
-  )
-
 generate_export_header(iolmaster
   BASE_NAME iolmaster
   EXPORT_FILE_NAME ${IOLINKMASTER_BINARY_DIR}/include/iolmaster_export.h
   )
 
-include_directories(${OSAL_INCLUDES})
-
-target_link_libraries(iolmaster osal)
-
-set_property(TARGET iolmaster PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(iolmaster osal iolmaster_osal)
 
 install (TARGETS iolmaster DESTINATION bin)
 install (FILES

@@ -59,7 +59,7 @@ typedef struct iolink_fsm_sm_state_transitions
    const iolink_fsm_sm_transition_t * transitions;
 } iolink_fsm_sm_state_transitions_t;
 
-const char * iolink_fsm_sm_event_literals[] = {
+static const char * const iolink_fsm_sm_event_literals[] = {
    "NONE",
    "DL_Mode_STARTUP",                    /* T1 */
    "CompOK",                             /* T2 */
@@ -90,7 +90,7 @@ const char * iolink_fsm_sm_event_literals[] = {
    "WRITE_MASTER_CYCL_DONE", /* Not in spec */
 };
 
-const char * iolink_sm_state_literals[] = {
+static const char * const iolink_sm_state_literals[] = {
    "PortInactive",
    "waitonDLPreoperate",
    "checkSerNum",
@@ -109,7 +109,7 @@ const char * iolink_sm_state_literals[] = {
    "wait_devmode_cnf",
 };
 
-const char * iolink_mhmode_literals[] = {
+static const char * const iolink_mhmode_literals[] = {
    "INACTIVE",
    "COM1",
    "COM2",
@@ -121,7 +121,7 @@ const char * iolink_mhmode_literals[] = {
    "OPERATE",
 };
 
-const char * iolink_sm_target_mode_literals[] = {
+static const char * const iolink_sm_target_mode_literals[] = {
    "CFGCOM",
    "AUTOCOM",
    "INACTIVE",
@@ -129,7 +129,7 @@ const char * iolink_sm_target_mode_literals[] = {
    "DO",
 };
 
-const char * iolink_error_literals[] = {
+static const char * const iolink_error_literals[] = {
    "NONE",
    "PDINLENGTH",
    "PDOUTLENGTH",
@@ -147,10 +147,173 @@ const char * iolink_error_literals[] = {
    "STATE_CONFLICT",
 };
 
+/**
+ * Trigger SM FSM state transition
+ *
+ * This function triggers an SM state transition according to the event.
+ */
 static void iolink_sm_event (iolink_port_t * port, iolink_fsm_sm_event_t event);
 
+/* Actions taken when transitioning to a new state. See iolink_sm_event(). */
+static iolink_fsm_sm_event_t sm_wr_master_cycl (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_checkCompV10_21 (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_readcomparameter (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_restartDevice (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_checkComp (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_checkVxy (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_write_mcmd_preop (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_fallback (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_portinactive (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_comlost (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_smoperate_ignore (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_waitonDLOp (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_inspectFault (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_checkSerNum (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_wait (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_write_devmode (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_smoperate_ind (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_dido (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+static iolink_fsm_sm_event_t sm_comlost_ignore (
+   iolink_port_t * port,
+   iolink_fsm_sm_event_t event);
+
+/* Callback functions to run on main thread */
 static void sm_write_cycl_cnf_cb (iolink_job_t * job);
+static void sm_operate_cb (iolink_job_t * job);
+static void sm_setportcfg_req_cb (iolink_job_t * job);
 static void sm_AL_Read_cnf_cb (iolink_job_t * job);
+static void sm_DL_Mode_ind_cb (iolink_job_t * job);
+static void sm_DL_Read_cnf_cb (iolink_job_t * job);
+static void sm_DL_Write_cnf_cb (iolink_job_t * job);
+static void sm_DL_Write_Devmode_cnf (iolink_job_t * job);
+
+/* Other functions */
+static void sm_DL_Mode_ind_cb_preop_op (
+   iolink_job_t * job,
+   iolink_mhmode_t mode,
+   iolink_fsm_sm_event_t event);
+static void sm_DL_Read_cnf_check_comp (
+   iolink_job_t * job,
+   iolink_sm_state_t state);
+static void sm_DL_Read_cnf_read_com_param (iolink_job_t * job);
+static iolink_fsm_sm_event_t sm_DL_Read_req (iolink_port_t * port, uint8_t addr);
+static void sm_DL_Write_cnf_checkvxy (iolink_job_t * job);
+static void sm_DL_Write_cnf_restart_dev (iolink_job_t * job);
+static void sm_DL_Write_cnf_waiton_operate (iolink_job_t * job);
+static iolink_fsm_sm_event_t sm_DL_Read_Write_req (
+   iolink_port_t * port,
+   uint8_t addr,
+   uint8_t value,
+   bool read);
+static iolink_fsm_sm_event_t sm_DL_Write_req (
+   iolink_port_t * port,
+   uint8_t addr,
+   uint8_t value);
+static void sm_DL_Write_Devicemode_req (
+   iolink_port_t * port,
+   iolink_dl_mode_t devicemode);
+static iolink_error_t sm_DL_SetMode_req_startup (iolink_port_t * port);
+static iolink_error_t sm_DL_SetMode_req_inactive (iolink_port_t * port);
+static iolink_error_t sm_DL_SetMode_req_preop_op (
+   iolink_port_t * port,
+   iolink_dl_mode_t mode);
+static iolink_error_t sm_DL_SetMode_req_preop (iolink_port_t * port);
+static iolink_error_t sm_DL_SetMode_req_operate (iolink_port_t * port);
+static void sm_AL_Read_cnf (
+   iolink_port_t * port,
+   uint8_t len,
+   const uint8_t * data,
+   iolink_smi_errortypes_t errortype);
+static void sm_write_master_cycl_cnf (
+   iolink_port_t * port,
+   iolink_smi_errortypes_t errortype);
+static void sm_do_check_comp_v10 (iolink_port_t * port);
+static void sm_do_check_comp (iolink_port_t * port);
+static void sm_check_sernum (iolink_port_t * port, bool SReadOk);
+static void sm_store_parameter_retrieved_from_device (
+   iolink_port_t * port, uint8_t addr, uint8_t value);
+static void sm_set_cycletime (iolink_port_t * port, uint8_t value);
+static void set_type_2_V (
+   bool pdin_isbytes,
+   bool pdout_isbytes,
+   uint8_t pdin,
+   uint8_t pdout,
+   uint8_t onreqdatalengthpermessage,
+   iolink_mode_vl_t * valuelist);
+static void set_valuelist (
+   iolink_mode_vl_t * valuelist,
+   uint8_t onreqdatalengthpermessage,
+   uint8_t pdinputlength,
+   uint8_t pdoutputlength,
+   uint8_t time,
+   iolink_msequencetype_t type);
+static iolink_error_t populate_mode_valuelist (
+   const uint8_t mscapa,
+   const uint8_t revid,
+   const uint8_t pdin,
+   const uint8_t pdout,
+   const uint8_t cycbyte,
+   const bool operate,
+   iolink_mode_vl_t * const valuelist);
+static void populate_preop_mode_valuelist (
+   const uint8_t mscapa,
+   const uint8_t cycbyte,
+   iolink_mode_vl_t * const valuelist);
+static void populate_legacy_operate_mode_valuelist (
+   const uint8_t mscapa,
+   uint8_t pdin,
+   uint8_t pdout,
+   const uint8_t cycbyte,
+   iolink_mode_vl_t * const valuelist);
+static void populate_nonlegacy_operate_mode_valuelist (
+   const uint8_t mscapa,
+   uint8_t pdin,
+   uint8_t pdout,
+   const uint8_t cycbyte,
+   iolink_mode_vl_t * const valuelist);
+static void populate_nonlegacy_operate_mode_valuelist_for_code_0 (
+   const bool pdin_isbytes,
+   const bool pdout_isbytes,
+   const uint8_t pdin,
+   const uint8_t pdout,
+   const uint8_t cycbyte,
+   iolink_mode_vl_t * const valuelist);
 static iolink_error_t populate_valuelist (
    uint8_t mscapa,
    uint8_t revid,
@@ -328,7 +491,7 @@ static void set_valuelist (
    valuelist->type                      = type;
 }
 
-static inline iolink_error_t sm_DL_SetMode_req_startup_inactive (
+static iolink_error_t sm_DL_SetMode_req_startup_inactive (
    iolink_port_t * port,
    iolink_dl_mode_t mode)
 {
@@ -346,17 +509,17 @@ static inline iolink_error_t sm_DL_SetMode_req_startup_inactive (
    return DL_SetMode_req (port, mode, &valuelist);
 }
 
-static inline iolink_error_t sm_DL_SetMode_req_startup (iolink_port_t * port)
+static iolink_error_t sm_DL_SetMode_req_startup (iolink_port_t * port)
 {
    return sm_DL_SetMode_req_startup_inactive (port, IOLINK_DLMODE_STARTUP);
 }
 
-static inline iolink_error_t sm_DL_SetMode_req_inactive (iolink_port_t * port)
+static iolink_error_t sm_DL_SetMode_req_inactive (iolink_port_t * port)
 {
    return sm_DL_SetMode_req_startup_inactive (port, IOLINK_DLMODE_INACTIVE);
 }
 
-static inline iolink_error_t sm_DL_SetMode_req_preop_op (
+static iolink_error_t sm_DL_SetMode_req_preop_op (
    iolink_port_t * port,
    iolink_dl_mode_t mode)
 {
@@ -385,12 +548,12 @@ static inline iolink_error_t sm_DL_SetMode_req_preop_op (
    return DL_SetMode_req (port, mode, &valuelist);
 }
 
-static inline iolink_error_t sm_DL_SetMode_req_preop (iolink_port_t * port)
+static iolink_error_t sm_DL_SetMode_req_preop (iolink_port_t * port)
 {
    return sm_DL_SetMode_req_preop_op (port, IOLINK_DLMODE_PREOPERATE);
 }
 
-static inline iolink_error_t sm_DL_SetMode_req_operate (iolink_port_t * port)
+static iolink_error_t sm_DL_SetMode_req_operate (iolink_port_t * port)
 {
    return sm_DL_SetMode_req_preop_op (port, IOLINK_DLMODE_OPERATE);
 }
@@ -720,7 +883,7 @@ static iolink_fsm_sm_event_t sm_dido (
    return SM_EVENT_NONE;
 }
 
-static inline void sm_DL_Read_cnf_read_com_param (iolink_job_t * job)
+static void sm_DL_Read_cnf_read_com_param (iolink_job_t * job)
 {
    iolink_port_t * port = job->port;
    uint8_t addr         = job->dl_rw_cnf.addr;
@@ -741,7 +904,7 @@ static inline void sm_DL_Read_cnf_read_com_param (iolink_job_t * job)
    }
 }
 
-static inline void sm_DL_Read_cnf_check_comp (
+static void sm_DL_Read_cnf_check_comp (
    iolink_job_t * job,
    iolink_sm_state_t state)
 {
@@ -762,7 +925,7 @@ static inline void sm_DL_Read_cnf_check_comp (
    }
 }
 
-static inline void sm_DL_Write_cnf_checkvxy (iolink_job_t * job)
+static void sm_DL_Write_cnf_checkvxy (iolink_job_t * job)
 {
    iolink_port_t * port                          = job->port;
    iolink_sm_port_t * sm                         = iolink_get_sm_ctx (port);
@@ -786,7 +949,7 @@ static inline void sm_DL_Write_cnf_checkvxy (iolink_job_t * job)
    }
 }
 
-static inline void sm_DL_Write_cnf_restart_dev (iolink_job_t * job)
+static void sm_DL_Write_cnf_restart_dev (iolink_job_t * job)
 {
    iolink_port_t * port                          = job->port;
    iolink_sm_port_t * sm                         = iolink_get_sm_ctx (port);
@@ -838,7 +1001,7 @@ static inline void sm_DL_Write_cnf_restart_dev (iolink_job_t * job)
    }
 }
 
-static inline void sm_DL_Write_cnf_waiton_operate (iolink_job_t * job)
+static void sm_DL_Write_cnf_waiton_operate (iolink_job_t * job)
 {
    iolink_port_t * port = job->port;
    uint8_t addr         = job->dl_rw_cnf.addr;
@@ -1549,7 +1712,7 @@ static void sm_AL_Read_cnf_cb (iolink_job_t * job)
    }
 }
 
-static inline void sm_DL_Mode_ind_cb_preop_op (
+static void sm_DL_Mode_ind_cb_preop_op (
    iolink_job_t * job,
    iolink_mhmode_t mode,
    iolink_fsm_sm_event_t event)
@@ -1571,7 +1734,7 @@ static inline void sm_DL_Mode_ind_cb_preop_op (
    }
 }
 
-static inline void sm_DL_Mode_ind_cb_preop (iolink_job_t * job)
+static void sm_DL_Mode_ind_cb_preop (iolink_job_t * job)
 {
    sm_DL_Mode_ind_cb_preop_op (
       job,
@@ -1579,12 +1742,12 @@ static inline void sm_DL_Mode_ind_cb_preop (iolink_job_t * job)
       SM_EVENT_DL_Mode_PREOPERATE);
 }
 
-static inline void sm_DL_Mode_ind_cb_operate (iolink_job_t * job)
+static void sm_DL_Mode_ind_cb_operate (iolink_job_t * job)
 {
    sm_DL_Mode_ind_cb_preop_op (job, IOLINK_MHMODE_OPERATE, SM_EVENT_DL_Mode_OPERATE);
 }
 
-static inline void sm_DL_Mode_ind_cb_inactive (iolink_job_t * job)
+static void sm_DL_Mode_ind_cb_inactive (iolink_job_t * job)
 {
    iolink_mhmode_t realmode = job->dl_mode;
 
@@ -1623,7 +1786,7 @@ static inline void sm_DL_Mode_ind_cb_inactive (iolink_job_t * job)
    }
 }
 
-static inline void sm_DL_Mode_ind_cb_inspectionfault (iolink_job_t * job)
+static void sm_DL_Mode_ind_cb_inspectionfault (iolink_job_t * job)
 {
    iolink_mhmode_t realmode = job->dl_mode;
 

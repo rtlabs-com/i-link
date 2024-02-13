@@ -17,12 +17,10 @@
 #define IOLINK_PL_HW_DRV_H
 
 #ifdef __rtk__
-#include <dev.h>
+#include <drivers/dev.h>
 #endif
 #include "iolink_types.h"
-#include <iolink_pl_hw.h>
 #include "iolink.h"
-#include "iolink_max14819.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -78,8 +76,7 @@ typedef struct iolink_hw_ops
 
 typedef struct iolink_hw_drv
 {
-   drv_t drv;
-
+   os_mutex_t *            mtx;
    const iolink_hw_ops_t * ops;
 } iolink_hw_drv_t;
 

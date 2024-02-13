@@ -51,7 +51,7 @@
  *
  */
 
-const char * iolink_cm_state_literals[] = {
+static const char * const iolink_cm_state_literals[] = {
    "CheckPortMode",
    "SM_Startup",
    "DS_ParamManager",
@@ -63,7 +63,7 @@ const char * iolink_cm_state_literals[] = {
    "LAST",
 };
 
-const char * iolink_cm_event_literals[] = {
+static const char * const iolink_cm_event_literals[] = {
    "NONE",
    "IOL_MANUAL",    /* T1 */
    "IOL_AUTOSTART", /* T2 */
@@ -103,6 +103,85 @@ typedef struct iolink_fsm_cm_state_transitions
  * This function triggers a CM state transition according to the event.
  */
 static void iolink_cm_event (iolink_port_t * port, iolink_fsm_cm_event_t event);
+
+/* Actions taken when transitioning to a new state. See iolink_cm_event(). */
+static iolink_fsm_cm_event_t cm_startup (
+   iolink_port_t * port,
+   iolink_fsm_cm_event_t event);
+static iolink_fsm_cm_event_t cm_dido (
+   iolink_port_t * port,
+   iolink_fsm_cm_event_t event);
+static iolink_fsm_cm_event_t cm_check_mode (
+   iolink_port_t * port,
+   iolink_fsm_cm_event_t event);
+static iolink_fsm_cm_event_t cm_comlost (
+   iolink_port_t * port,
+   iolink_fsm_cm_event_t event);
+static iolink_fsm_cm_event_t cm_comlost_ignore (
+   iolink_port_t * port,
+   iolink_fsm_cm_event_t event);
+static iolink_fsm_cm_event_t cm_cfg_change_ignore (
+   iolink_port_t * port,
+   iolink_fsm_cm_event_t event);
+static iolink_fsm_cm_event_t cm_ds_change (
+   iolink_port_t * port,
+   iolink_fsm_cm_event_t event);
+static iolink_fsm_cm_event_t cm_start_ds (
+   iolink_port_t * port,
+   iolink_fsm_cm_event_t event);
+static iolink_fsm_cm_event_t cm_ds_ready (
+   iolink_port_t * port,
+   iolink_fsm_cm_event_t event);
+static iolink_fsm_cm_event_t cm_ds_ready_ignore (
+   iolink_port_t * port,
+   iolink_fsm_cm_event_t event);
+static iolink_fsm_cm_event_t cm_sm_operate (
+   iolink_port_t * port,
+   iolink_fsm_cm_event_t event);
+static iolink_fsm_cm_event_t cm_port_fault (
+   iolink_port_t * port,
+   iolink_fsm_cm_event_t event);
+static iolink_fsm_cm_event_t cm_deactivate (
+   iolink_port_t * port,
+   iolink_fsm_cm_event_t event);
+
+/* Callback functions to run on main thread */
+static void cm_sm_port_mode_ind_cb (iolink_job_t * job);
+static void cm_ds_ready_cb (iolink_job_t * job);
+static void cm_ds_change_cb (iolink_job_t * job);
+static void cm_ds_fault_cb (iolink_job_t * job);
+static void cm_smi_masterident_cb (iolink_job_t * job);
+static void cm_smi_portconfiguration_cb (iolink_job_t * job);
+static void cm_smi_readbackportconfiguration_cb (iolink_job_t * job);
+static void cm_smi_portstatus_cb (iolink_job_t * job);
+
+/* Other functions */
+static void iolink_cm_do_smi_port_event (
+   iolink_port_t * port,
+   iolink_eventcode_t eventcode);
+static iolink_sm_target_mode_t portmode_to_target_mode (iolink_portmode_t portmode);
+static void portconfiglist_to_parameterlist (
+   const portconfiglist_t * cfg_list,
+   iolink_smp_parameterlist_t * paraml);
+static bool check_arg_block (
+   iolink_job_t * job,
+   iolink_arg_block_id_t cmp_ref_arg_block_id,
+   uint16_t arg_block_len,
+   iolink_arg_block_id_t cmp_exp_arg_block_id,
+   iolink_smi_errortypes_t errortype);
+static void set_port_config (
+   iolink_port_t * port, bool ds_init);
+static void init_port_info (
+   iolink_port_t * port,
+   iolink_port_status_info_t port_status_info,
+   iolink_port_quality_info_t port_quality_info);
+static iolink_error_t init_and_post_job (
+   iolink_port_t * port,
+   iolink_job_type_t type,
+   void (*callback) (struct iolink_job * job),
+   iolink_arg_block_id_t exp_arg_block_id,
+   uint16_t arg_block_len,
+   arg_block_t * arg_block);
 
 static iolink_sm_target_mode_t portmode_to_target_mode (iolink_portmode_t portmode)
 {
@@ -234,10 +313,12 @@ static iolink_fsm_cm_event_t cm_check_mode (
    portconfiglist_t * cfg_list;
    iolink_fsm_cm_event_t res_event = CM_EVENT_NONE;
    iolink_cm_port_t * cm           = iolink_get_cm_ctx (port);
+   arg_block_portconfiglist_t * arg_block_portconfiglist =
+      (arg_block_portconfiglist_t *)cm->smi_req.arg_block;
 
    if (event == CM_EVENT_CFG_CHANGE)
    {
-      cfg_list = &cm->smi_req.arg_block->port_cfg_list.configlist;
+      cfg_list = &arg_block_portconfiglist->configlist;
    }
    else // COMLOST
    {
@@ -302,7 +383,7 @@ static iolink_fsm_cm_event_t cm_check_mode (
       iolink_cm_port_t * cm              = iolink_get_cm_ctx (port);
       iolink_smi_service_req_t * smi_req = &cm->smi_req;
       iolink_arg_block_id_t ref_arg_block_id =
-         smi_req->arg_block->void_block.arg_block_id;
+         smi_req->arg_block->id;
 
       if (res_event == CM_EVENT_UNKNOWN)
       {
@@ -324,14 +405,14 @@ static iolink_fsm_cm_event_t cm_check_mode (
    return res_event;
 }
 
-static inline void iolink_cm_do_smi_port_event (
+static void iolink_cm_do_smi_port_event (
    iolink_port_t * port,
    iolink_eventcode_t eventcode)
 {
    arg_block_portevent_t port_event;
 
    memset (&port_event, 0, sizeof (arg_block_portevent_t));
-   port_event.arg_block_id = IOLINK_ARG_BLOCK_ID_PORT_EVENT;
+   port_event.arg_block.id = IOLINK_ARG_BLOCK_ID_PORT_EVENT;
    port_event.event.event_qualifier |= IOLINK_EVENT_INSTANCE_APPLICATION;
    port_event.event.event_qualifier |= IOLINK_EVENT_SOURCE_MASTER << 3;
    port_event.event.event_qualifier |= IOLINK_EVENT_TYPE_NOTIFICATION << 4;
@@ -785,7 +866,7 @@ static bool check_arg_block (
    iolink_smi_service_req_t * job_smi_req = &job->smi_req;
    iolink_arg_block_id_t exp_arg_block_id = job_smi_req->exp_arg_block_id;
    iolink_arg_block_id_t ref_arg_block_id =
-      job_smi_req->arg_block->void_block.arg_block_id;
+      job_smi_req->arg_block->id;
 
    if (ref_arg_block_id != cmp_ref_arg_block_id)
    {
@@ -833,7 +914,7 @@ static void cm_smi_masterident_cb (iolink_job_t * job)
    iolink_port_t * port                   = job->port;
    iolink_smi_service_req_t * job_smi_req = &job->smi_req;
    iolink_arg_block_id_t ref_arg_block_id =
-      job_smi_req->arg_block->void_block.arg_block_id;
+      job_smi_req->arg_block->id;
 
    if (check_arg_block (
           job,
@@ -850,7 +931,7 @@ static void cm_smi_masterident_cb (iolink_job_t * job)
 
       memset (&master_ident, 0, sizeof (arg_block_masterident_t));
 
-      master_ident.h.arg_block_id        = IOLINK_ARG_BLOCK_ID_MASTERIDENT;
+      master_ident.h.arg_block.id        = IOLINK_ARG_BLOCK_ID_MASTERIDENT;
       master_ident.h.vendorid            = 1171; // TODO
       master_ident.h.masterid            = 123;  // TODO
       master_ident.h.master_type         = IOLINK_MASTER_TYPE_MASTER_ACC;
@@ -901,7 +982,7 @@ static void cm_smi_readbackportconfiguration_cb (iolink_job_t * job)
    iolink_port_t * port                   = job->port;
    iolink_smi_service_req_t * job_smi_req = &job->smi_req;
    iolink_arg_block_id_t ref_arg_block_id =
-      job_smi_req->arg_block->void_block.arg_block_id;
+      job_smi_req->arg_block->id;
 
    if (check_arg_block (
           job,
@@ -918,7 +999,7 @@ static void cm_smi_readbackportconfiguration_cb (iolink_job_t * job)
          &arg_block_portcfg.configlist,
          &cm->cfg_list,
          sizeof (portconfiglist_t));
-      arg_block_portcfg.arg_block_id = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
+      arg_block_portcfg.arg_block.id = IOLINK_ARG_BLOCK_ID_PORT_CFG_LIST;
 
       iolink_smi_cnf (
          port,
@@ -933,7 +1014,7 @@ static void cm_smi_portstatus_cb (iolink_job_t * job)
    iolink_port_t * port                   = job->port;
    iolink_smi_service_req_t * job_smi_req = &job->smi_req;
    iolink_arg_block_id_t ref_arg_block_id =
-      job_smi_req->arg_block->void_block.arg_block_id;
+      job_smi_req->arg_block->id;
 
    if (check_arg_block (
           job,
@@ -946,7 +1027,7 @@ static void cm_smi_portstatus_cb (iolink_job_t * job)
       iolink_port_info_t * port_info = iolink_get_port_info (port);
 
       memset (&port_status, 0, sizeof (arg_block_portstatuslist_t));
-      port_status.arg_block_id      = IOLINK_ARG_BLOCK_ID_PORT_STATUS_LIST;
+      port_status.arg_block.id      = IOLINK_ARG_BLOCK_ID_PORT_STATUS_LIST;
       port_status.port_status_info  = port_info->port_status_info;
       port_status.transmission_rate = port_info->transmission_rate;
       port_status.vendorid          = port_info->vendorid;

@@ -46,14 +46,14 @@
  *
  */
 
-const char * iolink_al_od_state_literals[] = {
+static const char * const iolink_al_od_state_literals[] = {
    "OnReq_Idle",
    "Build_DL_Service",
    "Await_DL_param_cnf",
    "Await_DL_ISDU_cnf",
 };
 
-const char * iolink_al_od_event_literals[] = {
+static const char * const iolink_al_od_event_literals[] = {
    "NONE",
    "service",           /* T1", T16", T8 and T12 */
    "arg_err",           /* T2 */
@@ -70,7 +70,7 @@ const char * iolink_al_od_event_literals[] = {
    "abort_port",        /* T17 */
 };
 
-const char * iolink_al_event_state_literals[] = {
+static const char * const iolink_al_event_state_literals[] = {
    "Event_inactive",
    "Event_idle",
    "Read_Event_Set",
@@ -78,7 +78,7 @@ const char * iolink_al_event_state_literals[] = {
    "LAST",
 };
 
-const char * iolink_al_event_event_literals[] = {
+static const char * const iolink_al_event_event_literals[] = {
    "NONE",
    "dl_event_ind_more", /* T3 or T4 */
    "dl_event_ind_done", /* T5 or T3 + T5 */
@@ -115,7 +115,68 @@ typedef struct iolink_fsm_al_event_state_transitions
    const iolink_fsm_al_event_transition_t * transitions;
 } iolink_fsm_al_event_state_transitions_t;
 
-static inline iolink_smi_errortypes_t al_err_to_errortype (
+/* Declare prototypes of static functions as to comply with MISRA-071_a-3 */
+static iolink_smi_errortypes_t al_status_to_errortype (
+   const iolink_status_t stat);
+static iolink_smi_errortypes_t al_err_to_errortype (
+   iolink_al_port_t * al,
+   bool is_isdu);
+static iolink_fsm_al_od_event_t al_od_busy (
+   iolink_port_t * port,
+   iolink_fsm_al_od_event_t event);
+static iolink_fsm_al_od_event_t al_od_build_dl_service (
+   iolink_port_t * port,
+   iolink_fsm_al_od_event_t event);
+static iolink_fsm_al_od_event_t al_od_send_al_cnf (
+   iolink_port_t * port,
+   iolink_fsm_al_od_event_t event);
+static iolink_fsm_al_od_event_t al_od_send_abort_al_cnf (
+   iolink_port_t * port,
+   iolink_fsm_al_od_event_t event);
+static iolink_fsm_al_od_event_t al_od_isdu_read_write (
+   iolink_port_t * port,
+   iolink_rwdirection_t rwdirection);
+static iolink_fsm_al_od_event_t al_od_isdu_read (
+   iolink_port_t * port,
+   iolink_fsm_al_od_event_t event);
+static iolink_fsm_al_od_event_t al_od_isdu_write (
+   iolink_port_t * port,
+   iolink_fsm_al_od_event_t event);
+static iolink_fsm_al_od_event_t al_od_param_read (
+   iolink_port_t * port,
+   iolink_fsm_al_od_event_t event);
+static iolink_fsm_al_od_event_t al_od_param_write (
+   iolink_port_t * port,
+   iolink_fsm_al_od_event_t event);
+static iolink_fsm_al_od_event_t al_od_param_next_rw (
+   iolink_port_t * port,
+   iolink_fsm_al_od_event_t event);
+static void iolink_al_od_event (
+   iolink_port_t * port,
+   iolink_fsm_al_od_event_t event);
+static iolink_fsm_al_event_event_t al_event_wait_read (
+   iolink_port_t * port,
+   iolink_fsm_al_event_event_t event);
+static iolink_fsm_al_event_event_t al_event_du_handle (
+   iolink_port_t * port,
+   iolink_fsm_al_event_event_t event);
+static iolink_fsm_al_event_event_t al_event_idle (
+   iolink_port_t * port,
+   iolink_fsm_al_event_event_t event);
+static void iolink_al_event_event (
+   iolink_port_t * port,
+   iolink_fsm_al_event_event_t event);
+static void al_read_write_cb (iolink_job_t * job);
+static void al_dl_event_ind_cb (iolink_job_t * job);
+static void dl_control_ind_cb (iolink_job_t * job);
+static void al_dl_readparam_cnf_cb (iolink_job_t * job);
+static void al_dl_writeparam_cnf_cb (iolink_job_t * job);
+static void al_dl_isdu_transport_cnf_cb (iolink_job_t * job);
+static void al_abort_cb (iolink_job_t * job);
+static void al_event_rsp_cb (iolink_job_t * job);
+static void al_event_req_cb (iolink_job_t * job);
+
+static iolink_smi_errortypes_t al_err_to_errortype (
    iolink_al_port_t * al,
    bool is_isdu)
 {
@@ -199,41 +260,52 @@ static inline iolink_smi_errortypes_t al_err_to_errortype (
 
    if (errortype == IOLINK_SMI_ERRORTYPE_NONE)
    {
-      switch (stat)
-      {
-      case IOLINK_STATUS_NO_ERROR:
-         break; /* No error */
-      case IOLINK_STATUS_ISDU_ILLEGAL_SERVICE_PRIMITIVE:
-         errortype = IOLINK_SMI_ERRORTYPE_M_ISDU_ILLEGAL;
-         break;
-      case IOLINK_STATUS_PARITY_ERROR:
-      case IOLINK_STATUS_FRAMING_ERROR:
-      case IOLINK_STATUS_OVERRUN:
-      case IOLINK_STATUS_NO_COMM:
-      case IOLINK_STATUS_STATE_CONFLICT:
-      case IOLINK_STATUS_VALID:
-      case IOLINK_STATUS_PARAMETER_CONFLICT:
-      case IOLINK_STATUS_ISDU_NOT_SUPPORTED:
-      case IOLINK_STATUS_VALUE_OUT_OF_RANGE:
-      case IOLINK_STATUS_ISDU_ABORT:
-         errortype = IOLINK_SMI_ERRORTYPE_APP_DEV; // TODO how to know error
-                                                   // type?
-         break;
-      case IOLINK_STATUS_INVALID:
-         /* No ISDU service */
-         errortype = IOLINK_SMI_ERRORTYPE_COM_ERR;
-         break;
-      case IOLINK_STATUS_ISDU_CHECKSUM_ERROR:
-         errortype = IOLINK_SMI_ERRORTYPE_M_ISDU_CHECKSUM;
-         break;
-      case IOLINK_STATUS_ISDU_TIMEOUT:
-         errortype = IOLINK_SMI_ERRORTYPE_I_SERVICE_TIMEOUT;
-         break;
-      default:
-         LOG_ERROR (IOLINK_AL_LOG, "AL: Got unexpected IOLINK_ERROR 0x%02x\n", stat);
-         errortype = IOLINK_SMI_ERRORTYPE_APP_DEV;
-         break;
-      }
+      errortype = al_status_to_errortype (stat);
+   }
+
+   return errortype;
+}
+
+static iolink_smi_errortypes_t al_status_to_errortype (
+   const iolink_status_t stat)
+{
+   iolink_smi_errortypes_t errortype;
+
+   switch (stat)
+   {
+   case IOLINK_STATUS_NO_ERROR:
+      errortype = IOLINK_SMI_ERRORTYPE_NONE;
+      break;
+   case IOLINK_STATUS_ISDU_ILLEGAL_SERVICE_PRIMITIVE:
+      errortype = IOLINK_SMI_ERRORTYPE_M_ISDU_ILLEGAL;
+      break;
+   case IOLINK_STATUS_PARITY_ERROR:
+   case IOLINK_STATUS_FRAMING_ERROR:
+   case IOLINK_STATUS_OVERRUN:
+   case IOLINK_STATUS_NO_COMM:
+   case IOLINK_STATUS_STATE_CONFLICT:
+   case IOLINK_STATUS_VALID:
+   case IOLINK_STATUS_PARAMETER_CONFLICT:
+   case IOLINK_STATUS_ISDU_NOT_SUPPORTED:
+   case IOLINK_STATUS_VALUE_OUT_OF_RANGE:
+   case IOLINK_STATUS_ISDU_ABORT:
+      errortype = IOLINK_SMI_ERRORTYPE_APP_DEV; // TODO how to know error
+                                                // type?
+      break;
+   case IOLINK_STATUS_INVALID:
+      /* No ISDU service */
+      errortype = IOLINK_SMI_ERRORTYPE_COM_ERR;
+      break;
+   case IOLINK_STATUS_ISDU_CHECKSUM_ERROR:
+      errortype = IOLINK_SMI_ERRORTYPE_M_ISDU_CHECKSUM;
+      break;
+   case IOLINK_STATUS_ISDU_TIMEOUT:
+      errortype = IOLINK_SMI_ERRORTYPE_I_SERVICE_TIMEOUT;
+      break;
+   default:
+      LOG_ERROR (IOLINK_AL_LOG, "AL: Got unexpected IOLINK_ERROR 0x%02x\n", stat);
+      errortype = IOLINK_SMI_ERRORTYPE_APP_DEV;
+      break;
    }
 
    return errortype;
@@ -408,7 +480,6 @@ static iolink_fsm_al_od_event_t al_od_send_abort_al_cnf (
 
 static iolink_fsm_al_od_event_t al_od_isdu_read_write (
    iolink_port_t * port,
-   iolink_fsm_al_od_event_t event,
    iolink_rwdirection_t rwdirection)
 {
    iolink_isdu_vl_t valuelist;
@@ -443,14 +514,14 @@ static iolink_fsm_al_od_event_t al_od_isdu_read (
    iolink_port_t * port,
    iolink_fsm_al_od_event_t event)
 {
-   return al_od_isdu_read_write (port, event, IOLINK_RWDIRECTION_READ);
+   return al_od_isdu_read_write (port, IOLINK_RWDIRECTION_READ);
 }
 
 static iolink_fsm_al_od_event_t al_od_isdu_write (
    iolink_port_t * port,
    iolink_fsm_al_od_event_t event)
 {
-   return al_od_isdu_read_write (port, event, IOLINK_RWDIRECTION_WRITE);
+   return al_od_isdu_read_write (port, IOLINK_RWDIRECTION_WRITE);
 }
 
 static iolink_fsm_al_od_event_t al_od_param_read (
@@ -1152,7 +1223,7 @@ __attribute__ ((weak)) void AL_Event_ind (
    }
 
    memset (&arg_block_devevent, 0, sizeof (arg_block_devevent_t));
-   arg_block_devevent.arg_block_id = IOLINK_ARG_BLOCK_ID_DEV_EVENT;
+   arg_block_devevent.arg_block.id = IOLINK_ARG_BLOCK_ID_DEV_EVENT;
    if (event_cnt > 6)
    {
       LOG_ERROR (IOLINK_AL_LOG, "event_cnt (%u) > 6\n", event_cnt);

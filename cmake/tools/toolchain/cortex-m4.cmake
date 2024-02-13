@@ -12,6 +12,6 @@
 
 list(APPEND MACHINE
   -mfpu=vfp
-  -mcpu=cortex-m3
+  -mcpu=cortex-m4
   -mthumb
   )

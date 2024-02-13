@@ -3,9 +3,13 @@ build*/
 *#
 CMakeFiles/
 CMakeCache.txt
+CMakeUserPresets.json
 install
 doc/_build
 doc/_copied
+
+# Python files
+*env*
 
 .cproject
 .project
@@ -44,3 +48,6 @@ doc/_copied
 .vscode/
 /Debug/
 /Release/
+
+# Genereted patch files
+/*.patch

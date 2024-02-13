@@ -13,10 +13,6 @@
 # full license information.
 #*******************************************************************/
 
-add_executable(irq_test
-  util/irq_test.c
-  )
-
 add_executable(iol_master_ifm_sample_app
   iolink_smi.c
   iolink_ifm.c
@@ -30,7 +26,8 @@ target_include_directories(iol_master_ifm_sample_app
   ${IOLINK_BINARY_DIR}/src
   )
 
-include_directories(${OSAL_INCLUDES})
-
-target_link_libraries (iol_master_ifm_sample_app PUBLIC iolmaster)
-target_link_libraries (irq_test PUBLIC pthread)
+target_link_libraries (iol_master_ifm_sample_app
+  PUBLIC
+  iolmaster
+  iolmaster_osal
+  )

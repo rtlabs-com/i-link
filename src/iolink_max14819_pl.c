@@ -16,53 +16,16 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <iolink_dl.h>
 #include <errno.h>
 
+#include "iolink_max14819.h"
 #include "iolink_max14819_pl.h"
 #include "iolink_pl_hw_drv.h"
 #include "osal_log.h"
+#include "osal_spi.h"
 
-#ifdef __rtk__
-#include <gpio.h>
-#include "spi/spi.h"
-
-#define SPI_TRANSFER(fd, rbuf, wbuf, size)                                     \
-   spi_select (fd);                                                            \
-   spi_bidirectionally_transfer (fd, rbuf, wbuf, size);                        \
-   spi_unselect (fd);
-#elif defined(__linux__)
-#include <linux/spi/spidev.h>
-#include <sys/ioctl.h>
-
-void spi_transfer (
-   int fd,
-   void * data_read,
-   const void * data_written,
-   size_t n_bytes_to_transfer)
-{
-   // TODO
-   int delay = 100;
-   int speed = 4 * 1000 * 1000;
-   int bits  = 8;
-
-   struct spi_ioc_transfer tr = {
-      .tx_buf        = (unsigned long)data_written,
-      .rx_buf        = (unsigned long)data_read,
-      .len           = n_bytes_to_transfer,
-      .delay_usecs   = delay,
-      .speed_hz      = speed,
-      .bits_per_word = bits,
-   };
-
-   if (ioctl (fd, SPI_IOC_MESSAGE (1), &tr) < 1)
-   {
-      LOG_ERROR (IOLINK_PL_LOG, "%s: failed to send SPI message\n", __func__);
-   }
-}
-
-#define SPI_TRANSFER(fd, rbuf, wbuf, size) spi_transfer (fd, rbuf, wbuf, size);
-#endif
 
 /**
  * @file
@@ -150,6 +113,9 @@ void spi_transfer (
 #define MAX14819_INTERRUPTEN_WURQ          MAX14819_INTERRUPT_WURQ
 #define MAX14819_INTERRUPTEN_STATUS        MAX14819_INTERRUPT_STATUS
 
+#define MAX14819_REVID_MAX14819          0x0A
+#define MAX14819_REVID_MAX14819A         0x0E
+
 typedef enum
 {
    IOLINK_14819_CHANNEL_INVALID = -1,
@@ -195,7 +161,7 @@ static void iolink_14819_write_register (
              (iolink->chip_address << MAX14819_ADDR_OFFSET) |
              (reg << MAX14819_REGISTER_OFFSET);
    wbuf[1] = value;
-   SPI_TRANSFER (iolink->fd_spi, &rbuf, &wbuf, sizeof (wbuf));
+   _iolink_pl_hw_spi_transfer (iolink->fd_spi, &rbuf, &wbuf, sizeof (wbuf));
 }
 
 static uint8_t iolink_14819_read_register (iolink_14819_drv_t * iolink, uint8_t reg)
@@ -209,19 +175,7 @@ static uint8_t iolink_14819_read_register (iolink_14819_drv_t * iolink, uint8_t 
              (iolink->chip_address << MAX14819_ADDR_OFFSET) |
              (reg << MAX14819_REGISTER_OFFSET);
    wbuf[1] = 0;
-   SPI_TRANSFER (iolink->fd_spi, &rbuf, &wbuf, sizeof (wbuf));
-   /* Check SPI In-Band Device-Message-Ready */
-   if (reg == REG_RxFIFOLvlA)
-   {
-      if (rbuf[0] & MAX14819_SPI_INBAND_RRDYB)
-         os_event_set (iolink->dl_event[1], IOLINK_PL_EVENT_RXRDY);
-   }
-   if (reg == REG_RxFIFOLvlB)
-   {
-      if (rbuf[0] & MAX14819_SPI_INBAND_RRDYA)
-         os_event_set (iolink->dl_event[0], IOLINK_PL_EVENT_RXRDY);
-   }
-
+   _iolink_pl_hw_spi_transfer (iolink->fd_spi, &rbuf, &wbuf, sizeof (wbuf));
    return rbuf[1];
 }
 
@@ -240,7 +194,7 @@ static void iolink_14819_burst_write_tx (
                 (iolink->chip_address << MAX14819_ADDR_OFFSET) |
                 (rxtxreg << MAX14819_REGISTER_OFFSET);
    memcpy (&data_tx[1], data, size);
-   SPI_TRANSFER (iolink->fd_spi, data_rx, data_tx, size + 1);
+   _iolink_pl_hw_spi_transfer (iolink->fd_spi, data_rx, data_tx, size + 1);
 
    for (idx = 0; idx < size; idx++)
    {
@@ -269,7 +223,7 @@ static uint8_t iolink_14819_burst_read_rx (
    txdata[0] = MAX14819_COMMAND_READ |
                (iolink->chip_address << MAX14819_ADDR_OFFSET) |
                (rxtxreg << MAX14819_REGISTER_OFFSET);
-   SPI_TRANSFER (iolink->fd_spi, rxdata, txdata, rxbytes + 2);
+   _iolink_pl_hw_spi_transfer (iolink->fd_spi, rxdata, txdata, rxbytes + 2);
    memcpy (data, &rxdata[1], rxbytes);
 
    return rxdata[0];
@@ -285,6 +239,8 @@ static void iolink_14819_set_DO (
    os_mutex_lock (iolink->exclusive);
    regval = iolink_14819_read_register (iolink, REG_InterruptEn);
    iolink_14819_write_register (iolink, REG_InterruptEn, regval & ~(0x05 << ch));
+   regval = iolink_14819_read_register (iolink, REG_IOStCfgA + ch);
+   iolink_14819_write_register (iolink, REG_IOStCfgA + ch, regval | MAX14819_IOSTCFG_TXEN);
    os_mutex_unlock (iolink->exclusive);
    iolink_14819_write_register (iolink, REG_CQCtrlA + ch, 0x0C);
    iolink_14819_write_register (iolink, REG_MsgCtrlA + ch, 0x01);
@@ -487,9 +443,6 @@ static bool iolink_pl_max14819_set_mode (
    {
    case iolink_mode_DO:
       iol_cfg.DO.cq_conf_val = 0x04;
-#ifdef __rtk__
-      gpio_set (iolink->pin[ch], 1);
-#endif
       iolink_14819_set_DO (iolink, ch, &iol_cfg);
       break;
    case iolink_mode_INACTIVE:
@@ -846,36 +799,28 @@ error:
 }
 #endif
 
-static iolink_14819_drv_t * iolink_14819_init_base (const iolink_14819_cfg_t * cfg)
-{
-#ifdef __rtk__
-   static const drv_ops_t iolink_ops = {
-      .open    = iolink_pl_max14819_open,
-      .read    = NULL,
-      .write   = NULL,
-      .close   = NULL,
-      .ioctl   = NULL,
-      .hotplug = NULL};
-#endif
-   static const iolink_hw_ops_t iolink_hw_ops = {
-      .get_baudrate        = iolink_pl_max14819_get_baudrate,
-      .get_cycletime       = iolink_pl_max14819_get_cycletime,
-      .set_cycletime       = iolink_pl_max14819_set_cycletime,
-      .set_mode            = iolink_pl_max14819_set_mode,
-      .enable_cycle_timer  = iolink_pl_max14819_enable_cycle_timer,
-      .disable_cycle_timer = iolink_pl_max14819_disable_cycle_timer,
-      .get_error           = iolink_pl_max14819_get_error,
-      .get_data            = iolink_pl_max14819_get_data,
-      .send_msg            = iolink_pl_max14819_send_msg,
-      .dl_msg              = iolink_pl_max14819_dl_msg,
-      .transfer_req        = iolink_pl_max14819_transfer_req,
-      .init_sdci           = iolink_pl_max14819_init_sdci,
-      .configure_event     = iolink_pl_max14819_configure_event,
-      .pl_handler          = iolink_pl_max14819_pl_handler,
-   };
+static const iolink_hw_ops_t iolink_hw_ops = {
+   .get_baudrate        = iolink_pl_max14819_get_baudrate,
+   .get_cycletime       = iolink_pl_max14819_get_cycletime,
+   .set_cycletime       = iolink_pl_max14819_set_cycletime,
+   .set_mode            = iolink_pl_max14819_set_mode,
+   .enable_cycle_timer  = iolink_pl_max14819_enable_cycle_timer,
+   .disable_cycle_timer = iolink_pl_max14819_disable_cycle_timer,
+   .get_error           = iolink_pl_max14819_get_error,
+   .get_data            = iolink_pl_max14819_get_data,
+   .send_msg            = iolink_pl_max14819_send_msg,
+   .dl_msg              = iolink_pl_max14819_dl_msg,
+   .transfer_req        = iolink_pl_max14819_transfer_req,
+   .init_sdci           = iolink_pl_max14819_init_sdci,
+   .configure_event     = iolink_pl_max14819_configure_event,
+   .pl_handler          = iolink_pl_max14819_pl_handler,
+};
 
+iolink_hw_drv_t * iolink_14819_init (const iolink_14819_cfg_t * cfg)
+{
    iolink_14819_drv_t * iolink;
    uint8_t ch;
+   uint8_t rev;
    /* Allocate driver structure */
    iolink = calloc (1, sizeof (iolink_14819_drv_t));
    if (iolink == NULL)
@@ -884,17 +829,11 @@ static iolink_14819_drv_t * iolink_14819_init_base (const iolink_14819_cfg_t * c
    }
 
    /* Initialise driver structure */
-#ifdef __rtk__
-   iolink->drv.drv.ops = &iolink_ops;
-#endif
    iolink->drv.ops      = &iolink_hw_ops;
    iolink->chip_address = cfg->chip_address;
    for (ch = 0; ch < MAX14819_NUM_CHANNELS; ch++)
    {
       iolink->wurq_request[ch] = false;
-#ifdef __rtk__
-      iolink->pin[ch] = cfg->pin[ch];
-#endif
    }
    iolink->fd_spi = open (cfg->spi_slave_name, O_RDWR);
    if (iolink->fd_spi == -1)
@@ -904,6 +843,19 @@ static iolink_14819_drv_t * iolink_14819_init_base (const iolink_14819_cfg_t * c
    }
 
    iolink->exclusive = os_mutex_create();
+   iolink->drv.mtx = iolink->exclusive;
+
+   /* Verify chip is supported */
+   rev = iolink_14819_read_register (iolink, REG_RevID);
+   if (!(rev == MAX14819_REVID_MAX14819 ||
+         rev == MAX14819_REVID_MAX14819A))
+   {
+      LOG_ERROR (IOLINK_PL_LOG, "PL: Unsupported chip revision: 0x%02x\n", rev);
+      os_mutex_destroy(iolink->exclusive);
+      close (iolink->fd_spi);
+      free (iolink);
+      return NULL;
+   }
 
    // Reset all registers
    // Disable interrupts
@@ -956,58 +908,13 @@ static iolink_14819_drv_t * iolink_14819_init_base (const iolink_14819_cfg_t * c
       cfg->register_read_reg_fn (iolink_14819_read_register);
    }
 
-   return iolink;
+   return &iolink->drv;
 }
-
-#ifdef __rtk__
-drv_t * iolink_14819_init (const char * name, const iolink_14819_cfg_t * cfg)
-{
-   iolink_14819_drv_t * iolink = iolink_14819_init_base (cfg);
-
-   /* Install device driver */
-   dev_install ((drv_t *)&iolink->drv, name);
-
-   return (drv_t *)iolink;
-}
-#else
-int iolink_14819_init (const char * name, const iolink_14819_cfg_t * cfg)
-{
-   static const drv_ops_t iolink_ops = {
-      .open  = NULL,
-      .read  = NULL,
-      .write = NULL,
-      .close = NULL,
-      .ioctl = NULL,
-   };
-
-   iolink_14819_drv_t * iolink = iolink_14819_init_base (cfg);
-
-   if (iolink == NULL)
-   {
-      // ERROR
-      return -1;
-   }
-
-   iolink->drv.drv.ops  = &iolink_ops;
-   iolink->drv.drv.name = (char *)malloc (strlen (cfg->spi_slave_name) + 1);
-   strcpy (iolink->drv.drv.name, cfg->spi_slave_name);
-
-   /* Install device driver */
-   fd_set_driver (iolink->fd_spi, (drv_t *)&iolink->drv, NULL);
-
-   return iolink->fd_spi;
-}
-#endif
 
 void iolink_14819_isr (void * arg)
 {
    iolink_14819_drv_t * iolink;
-#ifdef __rtk__
    iolink = (iolink_14819_drv_t *)arg;
-#else
-   int fd = *(int *)arg;
-   iolink = (iolink_14819_drv_t *)fd_get_driver (fd);
-#endif
    uint8_t ch;
 
    // Set main event to trigger iolink_main

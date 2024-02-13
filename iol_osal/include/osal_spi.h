@@ -13,17 +13,23 @@
  * full license information.
  ********************************************************************/
 
-#ifndef OSAL_PL_HW_FILEOPS_H
-#define OSAL_PL_HW_FILEOPS_H
+#ifndef OSAL_PL_HW_SPI_H
+#define OSAL_PL_HW_SPI_H
+
+#include <sys/types.h> /* size_t */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int _iolink_pl_hw_open (const char * name);
+void _iolink_pl_hw_spi_transfer (
+   int fd,
+   void * data_read,
+   const void * data_written,
+   size_t n_bytes_to_transfer);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* OSAL_PL_HW_FILEOPS_H */
+#endif

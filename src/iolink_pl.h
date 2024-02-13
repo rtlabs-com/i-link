@@ -13,6 +13,12 @@
  * full license information.
  ********************************************************************/
 
+/**
+ * @file
+ * @brief Physical layer
+ *
+ */
+
 #ifndef IOLINK_PL_H
 #define IOLINK_PL_H
 
@@ -22,6 +28,7 @@
 
 #include <iolink_dl.h>
 #include <iolink_types.h>
+#include <iolink_pl_hw_drv.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +37,8 @@ extern "C" {
 typedef struct iolink_pl_port
 {
    int fd;
+   iolink_hw_drv_t * drv;
+   void *            arg;
 } iolink_pl_port_t;
 
 /*
@@ -69,7 +78,7 @@ void PL_DisableCycleTimer (iolink_port_t * port);
 #else
 void PL_Transfer_req (iolink_port_t * port, uint8_t data);
 #endif
-void iolink_pl_init (iolink_port_t * port, const char * name);
+void iolink_pl_init (iolink_port_t * port, iolink_hw_drv_t * drv, void * arg);
 
 #ifdef __cplusplus
 }

@@ -14,178 +14,160 @@
  ********************************************************************/
 
 #include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <pthread.h>
 
 #include "osal.h"
+#include "osal_irq.h"
+#include "osal_log.h"
 #include "iolink.h"
 #include "iolink_max14819.h"
 #include "iolink_handler.h"
 
-#define SYSFS_GPIO_DIR "/sys/class/gpio"
-#define MAX_BUF        64
 
 #define IOLINK_MASTER_THREAD_STACK_SIZE (4 * 1024)
 #define IOLINK_MASTER_THREAD_PRIO       6
 #define IOLINK_DL_THREAD_STACK_SIZE     1500
 #define IOLINK_DL_THREAD_PRIO           (IOLINK_MASTER_THREAD_PRIO + 1)
+#define IOLINK_HANDLER_THREAD_STACK_SIZE (2048)
+#define IOLINK_HANDLER_THREAD_PRIO       6
 
-typedef void (*isr_func_t) (void *);
+#ifdef __rtk__
 
-typedef struct
+#ifdef SPI_IOLINK0
+#  define IOLINK_APP_CHIP0_SPI       SPI_IOLINK0
+#  define IOLINK_APP_CHIP0_IRQ       IRQ_IOLINK0
+#endif
+
+#ifdef ADR_IOLINK0
+#  define IOLINK_APP_CHIP0_ADDRESS   ADR_IOLINK0
+#endif
+
+#ifdef SPI_IOLINK1
+#  define IOLINK_APP_CHIP1_SPI       SPI_IOLINK1
+#  define IOLINK_APP_CHIP1_IRQ       IRQ_IOLINK1
+#endif
+
+#ifdef ADR_IOLINK1
+#  define IOLINK_APP_CHIP1_ADDRESS   ADR_IOLINK1
+#endif
+
+#else
+
+#define IOLINK_APP_CHIP0_SPI      "/dev/spidev0.0"
+#define IOLINK_APP_CHIP0_IRQ      25
+
+#endif
+
+#ifndef IOLINK_APP_CHIP0_ADDRESS
+#define IOLINK_APP_CHIP0_ADDRESS 0x0
+#endif
+
+#ifndef IOLINK_APP_CHIP1_ADDRESS
+#define IOLINK_APP_CHIP1_ADDRESS 0x0
+#endif
+
+
+static iolink_pl_mode_t mode_ch[] =
 {
-   int spi_fd;
-   int irq_fd;
-   isr_func_t isr_func;
-} irq_thread_t;
+#ifdef IOLINK_APP_CHIP0_SPI
+   iolink_mode_SDCI,
+   iolink_mode_INACTIVE,
+#endif
+#ifdef IOLINK_APP_CHIP1_SPI
+   iolink_mode_SDCI,
+   iolink_mode_INACTIVE,
+#endif
+};
 
-void * irq_thread (void * arg)
+void main_handler_thread (void * ctx)
 {
-   irq_thread_t * irq = (irq_thread_t *)arg;
-   struct pollfd p_fd;
-   char buf[MAX_BUF];
-
-   while (true)
-   {
-      memset (&p_fd, 0, sizeof (p_fd));
-
-      p_fd.fd     = irq->irq_fd;
-      p_fd.events = POLLPRI;
-
-      int rc = poll (&p_fd, 1, 5000);
-
-      if (rc < 0)
-      {
-         printf ("\npoll() failed!\n");
-      }
-      else if (rc == 0)
-      {
-         printf (".");
-      }
-      else if (p_fd.revents & POLLPRI)
-      {
-         lseek (p_fd.fd, 0, SEEK_SET);
-         if (read (p_fd.fd, buf, MAX_BUF) > 0)
-         {
-            irq->isr_func (&irq->spi_fd);
-         }
-      }
-
-      fflush (stdout);
-   }
-   close (irq->irq_fd);
+   const iolink_m_cfg_t * cfg = (const iolink_m_cfg_t *)ctx;
+   iolink_handler (*cfg);
 }
 
-static pthread_t thread;
-
-pthread_t * setup_int (unsigned int gpio_pin, isr_func_t isr_func, int spi_fd)
+static iolink_hw_drv_t * main_14819_init(const char* name, const iolink_14819_cfg_t * cfg, int irq)
 {
-   char buf[MAX_BUF];
-   pthread_attr_t attr;
-   static irq_thread_t irqarg;
-
-   // Add gpio_pin to exported pins
-   int fd = open (SYSFS_GPIO_DIR "/export", O_WRONLY);
-
-   if (fd < 0)
+   iolink_hw_drv_t  * drv;
+   drv = iolink_14819_init (cfg);
+   if (drv == NULL)
    {
-      perror ("gpio/export");
+      LOG_ERROR (IOLINK_APP_LOG, "APP: Failed to open SPI %s\n", name);
       return NULL;
    }
 
-   int n = write (fd, buf, snprintf (buf, sizeof (buf), "%d", gpio_pin));
-   close (fd);
-
-   if (n < 0)
+   if (_iolink_setup_int (irq, iolink_14819_isr, drv) < 0)
    {
-      perror ("setup_int(): Failed to write gpio_pin to gpio/export");
-   }
-
-   // Set direction of pin to input
-   snprintf (buf, sizeof (buf), SYSFS_GPIO_DIR "/gpio%d/direction", gpio_pin);
-   fd = open (buf, O_WRONLY);
-
-   if (fd < 0)
-   {
-      perror ("gpio/direction");
+      LOG_ERROR (IOLINK_APP_LOG, "APP: Failed to setup interrupt %s\n", name);
       return NULL;
    }
-
-   n = write (fd, "in", sizeof ("in") + 1);
-   close (fd);
-
-   if (n < 0)
-   {
-      perror ("write direction");
-      return NULL;
-   }
-
-   // Set edge detection to falling
-   snprintf (buf, sizeof (buf), SYSFS_GPIO_DIR "/gpio%d/edge", gpio_pin);
-   fd = open (buf, O_WRONLY);
-
-   if (fd < 0)
-   {
-      perror ("gpio/edge");
-      return NULL;
-   }
-
-   n = write (fd, "falling", sizeof ("falling") + 1);
-   close (fd);
-
-   if (n < 0)
-   {
-      perror ("write edge");
-      return NULL;
-   }
-
-   // Open file and return file descriptor
-   snprintf (buf, sizeof (buf), SYSFS_GPIO_DIR "/gpio%d/value", gpio_pin);
-   fd = open (buf, O_RDONLY | O_NONBLOCK);
-
-   if (fd < 0)
-   {
-      perror ("gpio/value");
-   }
-
-   // Create isr service thread
-   irqarg.isr_func = isr_func;
-   irqarg.spi_fd   = spi_fd;
-   irqarg.irq_fd   = fd;
-   pthread_attr_init (&attr);
-   pthread_create (&thread, &attr, irq_thread, &irqarg);
-
-   return &thread;
+   return drv;
 }
-
-static iolink_pl_mode_t mode_ch_0 = iolink_mode_SDCI;
-static iolink_pl_mode_t mode_ch_1 = iolink_mode_INACTIVE;
 
 int main (int argc, char ** argv)
 {
-   iolink_14819_cfg_t iol_14819_cfg = {
-      .chip_address   = 0x00,
-      .spi_slave_name = "/dev/spidev0.0",
-      .CQCfgA         = 0x22,
-      .LPCnfgA        = 0x01,
-      .IOStCfgA       = 0x05,
+   os_thread_t * iolink_handler_thread;
+   iolink_hw_drv_t * hw[2];
+
+#ifdef IOLINK_APP_CHIP0_SPI
+   static const iolink_14819_cfg_t iol_14819_0_cfg = {
+      .chip_address   = IOLINK_APP_CHIP0_ADDRESS,
+      .spi_slave_name = IOLINK_APP_CHIP0_SPI,
+      .CQCfgA         = MAX14819_CQCFG_DRVDIS | MAX14819_CQCFG_SINKSEL(0x2),
+      .LPCnfgA        = MAX14819_LPCNFG_LPEN,
+      .IOStCfgA       = MAX14819_IOSTCFG_DICSINK | MAX14819_IOSTCFG_DIEC3TH,
       .DrvCurrLim     = 0x00,
-      .Clock          = 0x01,
-      .pin            = {0, 0},
+      .Clock          = MAX14819_CLOCK_XTALEN | MAX14819_CLOCK_TXTXENDIS,
    };
+#endif
+
+#ifdef IOLINK_APP_CHIP1_SPI
+   static const iolink_14819_cfg_t iol_14819_1_cfg = {
+      .chip_address   = IOLINK_APP_CHIP1_ADDRESS,
+      .spi_slave_name = IOLINK_APP_CHIP1_SPI,
+      .CQCfgA         = MAX14819_CQCFG_DRVDIS | MAX14819_CQCFG_SINKSEL(0x2),
+      .LPCnfgA        = MAX14819_LPCNFG_LPEN,
+      .IOStCfgA       = MAX14819_IOSTCFG_DICSINK | MAX14819_IOSTCFG_DIEC3TH,
+      .DrvCurrLim     = 0x00,
+      .Clock          = MAX14819_CLOCK_XTALEN | MAX14819_CLOCK_TXTXENDIS,
+   };
+#endif
+
+#ifdef IOLINK_APP_CHIP0_SPI
+   hw[0] = main_14819_init("/iolink0", &iol_14819_0_cfg, IOLINK_APP_CHIP0_IRQ);
+#endif
+
+#ifdef IOLINK_APP_CHIP1_SPI
+   hw[1] = main_14819_init("/iolink1", &iol_14819_1_cfg, IOLINK_APP_CHIP1_IRQ);
+#endif
 
    iolink_port_cfg_t port_cfgs[] = {
+#ifdef IOLINK_APP_CHIP0_SPI
       {
-         .name = "/dev/spidev0.0/0",
-         .mode = &mode_ch_0,
+         .name = "/iolink0/0",
+         .mode = &mode_ch[0],
+         .drv  = hw[0],
+         .arg  = (void*)0,
       },
       {
-         .name = "/dev/spidev0.0/1",
-         .mode = &mode_ch_1,
+         .name = "/iolink0/1",
+         .mode = &mode_ch[1],
+         .drv  = hw[0],
+         .arg  = (void*)1,
       },
+#endif
+#ifdef IOLINK_APP_CHIP1_SPI
+      {
+         .name = "/iolink1/0",
+         .mode = &mode_ch[2],
+         .drv  = hw[1],
+         .arg  = (void*)0,
+      },
+      {
+         .name = "/iolink1/1",
+         .mode = &mode_ch[3],
+         .drv  = hw[1],
+         .arg  = (void*)1,
+      },
+#endif
    };
 
    iolink_m_cfg_t iolink_cfg = {
@@ -200,22 +182,20 @@ int main (int argc, char ** argv)
       .dl_thread_stack_size     = IOLINK_DL_THREAD_STACK_SIZE,
    };
 
-   int fd = iolink_14819_init ("iolink", &iol_14819_cfg);
-   if (fd < 0)
+   os_usleep (200 * 1000);
+
+   iolink_handler_thread = os_thread_create (
+      "iolink_handler_thread",
+      IOLINK_HANDLER_THREAD_PRIO,
+      IOLINK_HANDLER_THREAD_STACK_SIZE,
+      main_handler_thread,
+      (void*)&iolink_cfg);
+   CC_ASSERT (iolink_handler_thread != NULL);
+
+   for (;;)
    {
-      printf ("Failed to open SPI\n");
-      return -1;
+      os_usleep (1000 * 1000);
    }
-
-   if (setup_int (25, iolink_14819_isr, fd) == NULL)
-   {
-      printf ("Failed to setup interrupt\n");
-      return -1;
-   }
-
-   usleep (200 * 1000);
-
-   iolink_handler (iolink_cfg);
 
    return 0;
 }

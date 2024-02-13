@@ -13,6 +13,12 @@
  * full license information.
  ********************************************************************/
 
+/**
+ * @file
+ * @brief Configuration Manager
+ *
+ */
+
 #ifndef IOLINK_CM_H
 #define IOLINK_CM_H
 
