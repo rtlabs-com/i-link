@@ -3,13 +3,32 @@
 #include "osal_spi.h"
 #include "osal_log.h"
 #include "options.h"
+#include "fcntl.h"
+#include "unistd.h"
+
+void * _iolink_pl_hw_spi_init (const char * spi_slave_name)
+{
+   int fd = -1;
+   fd     = open (spi_slave_name, O_RDWR);
+   if (fd == -1)
+   {
+      return NULL;
+   }
+   return (void *)fd;
+}
+
+void _iolink_pl_hw_spi_close (void * fd)
+{
+   close ((int)fd);
+}
 
 void _iolink_pl_hw_spi_transfer (
-   int fd,
+   void * fd,
    void * data_read,
    const void * data_written,
    size_t n_bytes_to_transfer)
 {
+   int spi_fd = (int)fd;
    // TODO
    int delay = 100;
    int speed = 4 * 1000 * 1000;
@@ -24,7 +43,7 @@ void _iolink_pl_hw_spi_transfer (
       .bits_per_word = bits,
    };
 
-   if (ioctl (fd, SPI_IOC_MESSAGE (1), &tr) < 1)
+   if (ioctl (spi_fd, SPI_IOC_MESSAGE (1), &tr) < 1)
    {
       LOG_ERROR (IOLINK_PL_LOG, "%s: failed to send SPI message\n", __func__);
    }

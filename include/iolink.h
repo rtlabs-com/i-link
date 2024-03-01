@@ -29,12 +29,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
-
-#ifdef __linux__
-#include "../src/options.h"
-#else
 #include "options.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {

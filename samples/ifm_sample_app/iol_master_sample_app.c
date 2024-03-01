@@ -32,6 +32,8 @@
 
 #ifdef __rtk__
 
+#include <bsp.h>
+
 #ifdef SPI_IOLINK0
 #  define IOLINK_APP_CHIP0_SPI       SPI_IOLINK0
 #  define IOLINK_APP_CHIP0_IRQ       IRQ_IOLINK0

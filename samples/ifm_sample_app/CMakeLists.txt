@@ -20,14 +20,11 @@ add_executable(iol_master_ifm_sample_app
   iol_master_sample_app.c
   )
 
-target_include_directories(iol_master_ifm_sample_app
-  PRIVATE
-  ${IOLINK_SOURCE_DIR}/src
-  ${IOLINK_BINARY_DIR}/src
-  )
-
 target_link_libraries (iol_master_ifm_sample_app
   PUBLIC
   iolmaster
   iolmaster_osal
+  $<$<STREQUAL:${CMAKE_SYSTEM_NAME},rt-kernel>:${BSP}>
   )
+
+install (TARGETS iol_master_ifm_sample_app)

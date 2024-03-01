@@ -1,11 +1,16 @@
 {
-    "version": 3,
+    "version": 6,
     "configurePresets": [
         {
-            "name": "rtkernel",
+            "name": "base",
             "hidden": true,
             "generator": "Ninja",
-            "binaryDir": "build.${presetName}",
+            "binaryDir": "build.${presetName}"
+        },
+        {
+            "name": "rtkernel",
+            "inherits" : "base",
+            "hidden": true,
             "toolchainFile": "$env{RTK}/cmake/toolchain/rt-kernel.cmake",
             "description": "Base target for rtkernel build. You will need to set BSP and RTK environmental variables in a child preset.",
             "environment": {
@@ -21,16 +26,21 @@
         },
         {
             "name": "linux",
-            "generator": "Ninja",
-            "binaryDir": "build.${presetName}",
+            "inherits" : "base",
             "cacheVariables": {
                 "BUILD_TESTING": true
             }
         },
         {
+            "name" : "linux-usb",
+            "cacheVariables" : {
+                "IOLINKMASTER_USB_MODE_ENABLE": true
+            },
+            "inherits" : "linux"
+        },
+        {
             "name": "docs",
-            "generator": "Ninja",
-            "binaryDir": "build.${presetName}",
+            "inherits" : "base",
             "cacheVariables": {
                 "IOLINKMASTER_BUILD_DOCS": true
             }
@@ -45,6 +55,15 @@
             "name": "docs",
             "targets": "sphinx-html",
             "configurePreset": "docs"
+        }
+    ],
+    "packagePresets": [
+        {
+            "name": "linux",
+            "configurePreset": "linux",
+            "generators": [
+                "ZIP"
+            ]
         }
     ],
     "testPresets": [

@@ -49,7 +49,7 @@ typedef struct iolink_14819_drv
    iolink_hw_drv_t drv;
 
    /* Private data */
-   int fd_spi;
+   void * fd_spi;
    uint8_t chip_address;
 
    uint32_t pl_flag;

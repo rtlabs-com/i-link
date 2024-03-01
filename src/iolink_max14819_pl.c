@@ -562,10 +562,9 @@ static bool iolink_pl_max14819_get_data (
 
    CC_ASSERT (ch >= MAX14819_CH_MIN);
    CC_ASSERT (ch <= MAX14819_CH_MAX);
-
    os_mutex_lock (iolink->exclusive);
    uint8_t RxBytesAct = iolink_14819_read_register (iolink, reg);
-   uint8_t rxbytes    = iolink_14819_read_register (iolink, lvlreg);
+   uint8_t rxbytes = iolink_14819_read_register (iolink, lvlreg);
 
    if (RxBytesAct != rxbytes)
    {
@@ -573,11 +572,15 @@ static bool iolink_pl_max14819_get_data (
          IOLINK_PL_LOG,
          "%s [fd/ch: %d/%d]: RxFIFOLvl (%d) != TxRxData (%d), len = %d\n",
          __func__,
-         iolink->fd_spi,
+         (int)iolink->fd_spi,
          ch,
          rxbytes,
          RxBytesAct,
          len);
+      uint8_t cqctrl = iolink_14819_read_register (iolink, REG_CQCtrlA + ch);
+      cqctrl |= MAX14819_CQCTRL_RX_FIFO_RST;
+      iolink_14819_write_register (iolink, REG_CQCtrlA + ch, cqctrl);
+      return false;
    }
 
    if (len < rxbytes)
@@ -586,7 +589,7 @@ static bool iolink_pl_max14819_get_data (
          IOLINK_PL_LOG,
          "%s [fd/ch: %d/%d]: Read buffer too small. Needed: %d. Actual: %d",
          __func__,
-         iolink->fd_spi,
+         (int)iolink->fd_spi,
          ch,
          rxbytes,
          len);
@@ -835,8 +838,9 @@ iolink_hw_drv_t * iolink_14819_init (const iolink_14819_cfg_t * cfg)
    {
       iolink->wurq_request[ch] = false;
    }
-   iolink->fd_spi = open (cfg->spi_slave_name, O_RDWR);
-   if (iolink->fd_spi == -1)
+   iolink->fd_spi = _iolink_pl_hw_spi_init(cfg->spi_slave_name);
+
+   if (iolink->fd_spi == NULL)
    {
       free (iolink);
       return NULL;
@@ -852,7 +856,7 @@ iolink_hw_drv_t * iolink_14819_init (const iolink_14819_cfg_t * cfg)
    {
       LOG_ERROR (IOLINK_PL_LOG, "PL: Unsupported chip revision: 0x%02x\n", rev);
       os_mutex_destroy(iolink->exclusive);
-      close (iolink->fd_spi);
+      _iolink_pl_hw_spi_close(iolink->fd_spi);
       free (iolink);
       return NULL;
    }

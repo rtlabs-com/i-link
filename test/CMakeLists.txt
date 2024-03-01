@@ -19,6 +19,7 @@ add_definitions(
   -DUNIT_TEST
   )
 
+# TODO: ett snyggare sätt att bygga test beroende på linux/linux-usb / rt-kernel
 add_executable(iol_test
   # Units to be tested
   ${IOLINKMASTER_SOURCE_DIR}/src/iolink_main.c
@@ -28,6 +29,7 @@ add_executable(iol_test
   ${IOLINKMASTER_SOURCE_DIR}/src/iolink_ds.c
   ${IOLINKMASTER_SOURCE_DIR}/src/iolink_ode.c
   ${IOLINKMASTER_SOURCE_DIR}/src/iolink_pde.c
+  ${IOLINKMASTER_SOURCE_DIR}/iol_osal/linux/osal_spi_usb_helpers.c
 
   # Unit tests
   test_sm.cpp
@@ -36,6 +38,7 @@ add_executable(iol_test
   test_ds.cpp
   test_ode.cpp
   test_pde.cpp
+  test_spi_usb.cpp
 
   # Test utils
   mocks.h
@@ -49,9 +52,9 @@ add_executable(iol_test
 target_include_directories(iol_test
   PRIVATE
   .
-  "$<TARGET_PROPERTY:iolmaster,INTERFACE_INCLUDE_DIRECTORIES>"
+  "$<TARGET_PROPERTY:iolmaster,INCLUDE_DIRECTORIES>"
   SYSTEM
-  "$<TARGET_PROPERTY:iolmaster,INTERFACE_SYSTEM_INCLUDE_DIRECTORIES>"
+  "$<TARGET_PROPERTY:iolmaster,SYSTEM_INCLUDE_DIRECTORIES>"
   )
 
 target_link_libraries(iol_test PUBLIC osal)

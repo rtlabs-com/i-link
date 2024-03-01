@@ -83,7 +83,7 @@ configure_file (
 # Generate config options
 configure_file (
   ${IOLINKMASTER_SOURCE_DIR}/options.h.in
-  ${IOLINKMASTER_BINARY_DIR}/src/options.h
+  ${IOLINKMASTER_BINARY_DIR}/include/options.h
   )
 
 # Source paths
@@ -92,10 +92,11 @@ add_subdirectory (src)
 # Include paths
 target_include_directories(iolmaster
   PUBLIC
-  ${IOLINKMASTER_BINARY_DIR}/include
-  ${IOLINKMASTER_BINARY_DIR}/src
-  ${IOLINKMASTER_SOURCE_DIR}/include
-  ${IOLINKMASTER_SOURCE_DIR}/src
+    $<BUILD_INTERFACE:${IOLINKMASTER_BINARY_DIR}/include>
+    $<BUILD_INTERFACE:${IOLINKMASTER_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  PRIVATE
+    src
 )
 
 if (BUILD_TESTING)
@@ -128,7 +129,29 @@ if (IOLINKMASTER_BUILD_DOCS)
     )
 endif()
 
+install (
+  TARGETS
+    iolmaster
+    iolmaster_osal
+  EXPORT IolinkMasterConfig
+  )
+
+install (
+  EXPORT IolinkMasterConfig
+  DESTINATION cmake
+)
+
+install (FILES
+  ${IOLINKMASTER_SOURCE_DIR}/include/iolink.h
+  ${IOLINKMASTER_SOURCE_DIR}/include/iolink_dl.h
+  ${IOLINKMASTER_SOURCE_DIR}/include/iolink_main.h
+  ${IOLINKMASTER_SOURCE_DIR}/include/iolink_types.h
+  ${IOLINKMASTER_SOURCE_DIR}/include/iolink_max14819.h
+  ${IOLINKMASTER_BINARY_DIR}/include/iolmaster_export.h
+  DESTINATION include)
+
+
 include (InstallRequiredSystemLibraries)
 set (CPACK_RESOURCE_FILE_LICENSE "${IOLINKMASTER_SOURCE_DIR}/LICENSE.md")
-set (CPACK_PACKAGE_IOLMCONTACT info.iolink@rt-labs.com)
+set (CPACK_PACKAGE_CONTACT info.iolink@rt-labs.com)
 include (CPack)
