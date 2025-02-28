@@ -1,10 +1,10 @@
 #include <stdlib.h>
 #include <inttypes.h>
-#include "options.h"
+#include "iolink_options.h"
 #include "osal_spi.h"
 #include "osal_log.h"
 #include "ftd2xx.h"
-#include "osal_spi_usb_helpers.h"
+#include "osal_spi_internal.h"
 #include "string.h"
 
 #define CLK_FREQUENCY            2.5 * 1000 * 1000
@@ -35,6 +35,27 @@
 #define SET_DIRECTION                            0x0B
 
 os_mutex_t * ftdi_io_mutex;
+
+/**
+ * Calculate transfer size.
+ *
+ * If the difference between n_bytes_to_transfer and n_bytes_transferred is
+ * greater than (UINT16_MAX + 1), (UINT16_MAX + 1) will be returned. Otherwise,
+ * the difference is returned.
+ *
+ * @param n_bytes_transfer     In: The number of bytes to be transferred.
+ * @param n_bytes_transferred  In: The number of bytes already transferred.
+ * @return The number of bytes currently to be transferred, a value between 0 -
+ * (UINT16_MAX + 1)
+ */
+uint32_t _iolink_calc_current_transfer_size (
+   uint32_t n_bytes_to_transfer,
+   uint32_t n_bytes_transferred)
+{
+   return ((n_bytes_to_transfer - n_bytes_transferred) > 64 * 1024)
+             ? 64 * 1024
+             : (n_bytes_to_transfer - n_bytes_transferred);
+}
 
 /**
  * Set the Chip Select (CS) pin on the FT2232H chip.

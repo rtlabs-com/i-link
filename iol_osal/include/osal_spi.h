@@ -88,11 +88,6 @@ void _iolink_pl_hw_spi_transfer (
    const void * data_written,
    size_t n_bytes_to_transfer);
 
-/* Functions exposed for unit testing */
-uint32_t _iolink_calc_current_transfer_size (
-   uint32_t n_bytes_to_transfer,
-   uint32_t n_bytes_transferred);
-
 #ifdef __cplusplus
 }
 #endif

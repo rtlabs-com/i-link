@@ -29,7 +29,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
-#include "options.h"
+#include "iolink_options.h"
 
 #ifdef __cplusplus
 extern "C" {

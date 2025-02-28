@@ -30,7 +30,7 @@ extern "C" {
 
 typedef struct iolink_dl iolink_dl_t;
 #include "iolink_main.h"
-#include "options.h" /* IOLINK_MAX_EVENTS */
+#include "iolink_options.h" /* IOLINK_MAX_EVENTS */
 #include "osal.h"
 
 /**

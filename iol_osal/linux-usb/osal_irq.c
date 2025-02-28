@@ -5,7 +5,7 @@
 /* Needed for hardware driver (iolink_14819_drv_t) */
 #include "iolink_max14819_pl.h"
 #include "ftd2xx.h"
-#include "osal_spi_usb_helpers.h"
+#include "osal_spi_internal.h"
 
 #include "osal_irq.h"
 

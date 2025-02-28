@@ -18,10 +18,10 @@
 #include "osal.h"
 #include "osal_log.h"
 #include "iolink.h"
-#include "iolink_main.h"
-#include "iolink_dl.h"
-#include "iolink_handler.h"
-#include "iolink_ifm.h"
+#include "iolink_main.h" /* TODO Use headers from include/ directory */
+#include "iolink_dl.h"   /* TODO Use headers from include/ directory */
+#include "app_handler.h"
+#include "app_ifm.h"
 
 #define EVENT_PD_0           BIT (0)
 #define EVENT_COMLOST_0      BIT (8)
@@ -42,17 +42,17 @@
       return 1;                                                                \
    }
 
-iolink_app_master_ctx_t iolink_app_master;
+app_master_ctx_t app_master;
 
-static void SMI_cnf_cb (
+static void app_smi_cnf_cb (
    void * arg,
    uint8_t portnumber,
    iolink_arg_block_id_t ref_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block);
 
-static uint8_t verify_smi_masterident (
-   iolink_app_port_ctx_t * app_port,
+static uint8_t app_verify_smi_masterident (
+   app_port_ctx_t * app_port,
    uint16_t vendorid,
    uint32_t masterid)
 {
@@ -68,7 +68,7 @@ static uint8_t verify_smi_masterident (
       (arg_block_t *)&arg_block_void);
    if (
       (err != IOLINK_ERROR_NONE) ||
-      (wait_for_cnf (app_port, SMI_MASTERIDENT_CNF, 1000) !=
+      (app_wait_for_cnf (app_port, SMI_MASTERIDENT_CNF, 1000) !=
        IOLINK_SMI_ERRORTYPE_NONE))
    {
       return 1;
@@ -80,12 +80,12 @@ static uint8_t verify_smi_masterident (
    return 0;
 }
 
-static void iolink_app_init_port (
-   iolink_app_port_ctx_t * app_port,
+static void app_init_port (
+   app_port_ctx_t * app_port,
    iolink_m_cfg_t * m_cfg)
 {
    iolink_port_t * port =
-      iolink_get_port (iolink_app_master.master, app_port->portnumber);
+      iolink_get_port (app_master.master, app_port->portnumber);
 
    app_port->event_mtx  = os_mutex_create();
    app_port->status_mtx = os_mutex_create();
@@ -98,7 +98,7 @@ static void iolink_app_init_port (
    app_port->allocated = 1;
    app_port->event     = os_event_create();
 
-   if (verify_smi_masterident (app_port, MASTER_VENDOR_ID, MASTER_ID) != 0)
+   if (app_verify_smi_masterident (app_port, MASTER_VENDOR_ID, MASTER_ID) != 0)
    {
       LOG_WARNING (
          LOG_STATE_ON,
@@ -107,7 +107,7 @@ static void iolink_app_init_port (
    }
 }
 
-void iolink_common_config (
+void app_common_config (
    arg_block_portconfiglist_t * port_cfg,
    uint16_t vid,
    uint32_t did,
@@ -124,11 +124,11 @@ void iolink_common_config (
    port_cfg->configlist.iq_behavior       = IOLINK_IQ_BEHAVIOR_NO_SUPPORT;
 }
 
-static uint8_t iolink_config_port_sdci_auto (iolink_app_port_ctx_t * app_port)
+static uint8_t app_config_port_sdci_auto (app_port_ctx_t * app_port)
 {
    arg_block_portconfiglist_t port_cfg;
 
-   iolink_common_config (
+   app_common_config (
       &port_cfg,
       0,
       0,
@@ -145,7 +145,7 @@ static uint8_t iolink_config_port_sdci_auto (iolink_app_port_ctx_t * app_port)
       (arg_block_t *)&port_cfg);
    if (
       (err != IOLINK_ERROR_NONE) ||
-      (wait_for_cnf (app_port, SMI_PORTCFG_CNF, 1000) !=
+      (app_wait_for_cnf (app_port, SMI_PORTCFG_CNF, 1000) !=
        IOLINK_SMI_ERRORTYPE_NONE))
    {
       return 1;
@@ -154,13 +154,13 @@ static uint8_t iolink_config_port_sdci_auto (iolink_app_port_ctx_t * app_port)
    return 0;
 }
 
-static uint8_t iolink_config_port_dido (iolink_app_port_ctx_t * app_port, bool di)
+static uint8_t app_config_port_dido (app_port_ctx_t * app_port, bool di)
 {
    arg_block_portconfiglist_t port_cfg;
 
    bzero (&port_cfg, sizeof (arg_block_portconfiglist_t));
 
-   iolink_common_config (
+   app_common_config (
       &port_cfg,
       0,
       0,
@@ -175,7 +175,7 @@ static uint8_t iolink_config_port_dido (iolink_app_port_ctx_t * app_port, bool d
       (arg_block_t *)&port_cfg);
    if (
       (err != IOLINK_ERROR_NONE) ||
-      (wait_for_cnf (app_port, SMI_PORTCFG_CNF, 1000) !=
+      (app_wait_for_cnf (app_port, SMI_PORTCFG_CNF, 1000) !=
        IOLINK_SMI_ERRORTYPE_NONE))
    {
       return 1;
@@ -184,22 +184,20 @@ static uint8_t iolink_config_port_dido (iolink_app_port_ctx_t * app_port, bool d
    return 0;
 }
 
-static uint8_t iolink_config_port (
-   iolink_app_port_ctx_t * app_port,
-   iolink_pl_mode_t port_mode)
+static uint8_t app_config_port (app_port_ctx_t * app_port, iolink_pl_mode_t port_mode)
 {
    uint8_t res = 0;
 
    switch (port_mode)
    {
    case iolink_mode_SDCI:
-      res = iolink_config_port_sdci_auto (app_port);
+      res = app_config_port_sdci_auto (app_port);
       break;
    case iolink_mode_DO:
-      res = iolink_config_port_dido (app_port, false);
+      res = app_config_port_dido (app_port, false);
       break;
    case iolink_mode_DI:
-      res = iolink_config_port_dido (app_port, true);
+      res = app_config_port_dido (app_port, true);
       break;
    case iolink_mode_INACTIVE:
       break;
@@ -208,7 +206,7 @@ static uint8_t iolink_config_port (
    return res;
 }
 
-uint8_t get_port_status (iolink_app_port_ctx_t * app_port)
+uint8_t app_get_port_status (app_port_ctx_t * app_port)
 {
    arg_block_void_t arg_block_void;
 
@@ -222,7 +220,7 @@ uint8_t get_port_status (iolink_app_port_ctx_t * app_port)
       (arg_block_t *)&arg_block_void);
    if (
       (err != IOLINK_ERROR_NONE) ||
-      (wait_for_cnf (app_port, SMI_PORTSTATUS_CNF, 1000) !=
+      (app_wait_for_cnf (app_port, SMI_PORTSTATUS_CNF, 1000) !=
        IOLINK_SMI_ERRORTYPE_NONE))
    {
       return 1;
@@ -231,12 +229,12 @@ uint8_t get_port_status (iolink_app_port_ctx_t * app_port)
    return 0;
 }
 
-static uint8_t iolink_start_port (iolink_app_port_ctx_t * app_port)
+static uint8_t app_start_port (app_port_ctx_t * app_port)
 {
-   iolink_app_port_status_t * port_status = &app_port->status;
-   uint8_t portnumber                     = app_port->portnumber;
+   app_port_status_t * port_status = &app_port->status;
+   uint8_t portnumber              = app_port->portnumber;
 
-   if (get_port_status (app_port) != 0)
+   if (app_get_port_status (app_port) != 0)
    {
       return 1;
    }
@@ -261,10 +259,10 @@ static uint8_t iolink_start_port (iolink_app_port_ctx_t * app_port)
       switch (port_status->deviceid)
       {
       case IFM_RFID_DEVICE_ID:
-         ifmrfid_setup (app_port);
+         app_ifm_rfid_setup (app_port);
          break;
       case IFM_HMI_DEVICE_ID:
-         ifmHMI_setup (app_port);
+         app_ifm_hmi_setup (app_port);
          break;
       default:
          app_port->type           = UNKNOWN;
@@ -298,53 +296,52 @@ static uint8_t iolink_start_port (iolink_app_port_ctx_t * app_port)
    return 0;
 }
 
-static void PD_cb (
+static void app_pd_cb (
    uint8_t portnumber,
    void * arg,
    uint8_t data_len,
    const uint8_t * inputdata)
 {
-   uint8_t port_index                   = portnumber - 1;
-   iolink_app_master_ctx_t * app_master = (iolink_app_master_ctx_t *)arg;
-   iolink_app_port_ctx_t * app_port = &iolink_app_master.app_port[port_index];
+   uint8_t port_index        = portnumber - 1;
+   app_master_ctx_t * app_m  = (app_master_ctx_t *)arg;
+   app_port_ctx_t * app_port = &app_master.app_port[port_index];
 
-   os_event_set (app_master->app_event, EVENT_PD_0 << port_index);
+   os_event_set (app_m->app_event, EVENT_PD_0 << port_index);
    memcpy (app_port->pdin.data, inputdata, data_len);
    app_port->pdin.data_len = data_len;
 }
 
-static void iolink_retry_estcom (os_timer_t * tmr, void * arg)
+static void app_retry_estcom (os_timer_t * tmr, void * arg)
 {
    uint8_t port_idx = ((uintptr_t)arg) & 0xFF;
 
-   iolink_app_master.app_port[port_idx].app_port_state =
-      IOL_STATE_WU_RETRY_WAIT_TSD;
-   os_event_set (iolink_app_master.app_event, EVENT_RETRY_ESTCOM_0 << port_idx);
+   app_master.app_port[port_idx].app_port_state = IOL_STATE_WU_RETRY_WAIT_TSD;
+   os_event_set (app_master.app_event, EVENT_RETRY_ESTCOM_0 << port_idx);
 }
 
-void iolink_handler (iolink_m_cfg_t m_cfg)
+void app_handler (iolink_m_cfg_t m_cfg)
 {
    long unsigned int i;
    os_event_t * app_event = os_event_create();
    iolink_pl_mode_t port_mode[IOLINK_NUM_PORTS];
-   os_timer_t * iolink_tsd_tmr[IOLINK_NUM_PORTS] = {NULL};
+   os_timer_t * app_tsd_timer[IOLINK_NUM_PORTS] = {NULL};
 
    for (i = 0; i < m_cfg.port_cnt; i++)
    {
       if (*m_cfg.port_cfgs[i].mode == iolink_mode_SDCI)
       {
-         iolink_tsd_tmr[i] =
-            os_timer_create (1000 * 1000, iolink_retry_estcom, (void *)i, true);
+         app_tsd_timer[i] =
+            os_timer_create (1000 * 1000, app_retry_estcom, (void *)i, true);
       }
    }
 
    bzero (port_mode, sizeof (port_mode));
-   bzero (&iolink_app_master, sizeof (iolink_app_master));
-   iolink_app_master.app_event = app_event;
+   bzero (&app_master, sizeof (app_master));
+   app_master.app_event = app_event;
 
-   m_cfg.cb_arg = &iolink_app_master;
-   m_cfg.cb_smi = SMI_cnf_cb;
-   m_cfg.cb_pd  = PD_cb;
+   m_cfg.cb_arg = &app_master;
+   m_cfg.cb_smi = app_smi_cnf_cb;
+   m_cfg.cb_pd  = app_pd_cb;
 
    iolink_m_t * master = iolink_m_init (&m_cfg);
 
@@ -354,28 +351,26 @@ void iolink_handler (iolink_m_cfg_t m_cfg)
       CC_ASSERT (0);
    }
 
-   iolink_app_master.master = master;
+   app_master.master = master;
 
    for (i = 0; i < m_cfg.port_cnt; i++)
    {
       if (*m_cfg.port_cfgs[i].mode != iolink_mode_INACTIVE)
       {
          port_mode[i]                             = *m_cfg.port_cfgs[i].mode;
-         iolink_app_master.app_port[i].portnumber = i + 1;
-         iolink_app_master.app_port[i].app_master = &iolink_app_master;
-         iolink_app_init_port (
-            &iolink_app_master.app_port[i],
-            &m_cfg);
+         app_master.app_port[i].portnumber = i + 1;
+         app_master.app_port[i].app_master = &app_master;
+         app_init_port (&app_master.app_port[i], &m_cfg);
       }
 
       /* Config allocated port */
-      iolink_app_port_ctx_t * app_port = &iolink_app_master.app_port[i];
+      app_port_ctx_t * app_port = &app_master.app_port[i];
 
       if (app_port->allocated == 1)
       {
-         iolink_get_port (iolink_app_master.master, app_port->portnumber);
+         iolink_get_port (app_master.master, app_port->portnumber);
 
-         if (iolink_config_port (app_port, port_mode[i]) != 0)
+         if (app_config_port (app_port, port_mode[i]) != 0)
          {
             LOG_WARNING (
                LOG_STATE_ON,
@@ -390,13 +385,13 @@ void iolink_handler (iolink_m_cfg_t m_cfg)
    {
       uint32_t event_value;
 
-      if (!os_event_wait (iolink_app_master.app_event, 0xFFFFFFFF, &event_value, 1000))
+      if (!os_event_wait (app_master.app_event, 0xFFFFFFFF, &event_value, 1000))
       {
-         os_event_clr (iolink_app_master.app_event, event_value);
+         os_event_clr (app_master.app_event, event_value);
 
          for (i = 0; i < m_cfg.port_cnt; i++)
          {
-            iolink_app_port_ctx_t * app_port = &iolink_app_master.app_port[i];
+            app_port_ctx_t * app_port = &app_master.app_port[i];
 
             if (((EVENT_PD_0 << i) & event_value) != 0)
             {
@@ -413,7 +408,7 @@ void iolink_handler (iolink_m_cfg_t m_cfg)
             {
                if (app_port->app_port_state == IOL_STATE_STARTING)
                {
-                  if (iolink_start_port (app_port) != 0)
+                  if (app_start_port (app_port) != 0)
                   {
                      LOG_WARNING (
                         LOG_STATE_ON,
@@ -437,10 +432,9 @@ void iolink_handler (iolink_m_cfg_t m_cfg)
             {
                if (app_port->app_port_state == IOL_STATE_WU_RETRY_WAIT_TSD)
                {
-                  iolink_dl_reset (iolink_get_port (
-                     iolink_app_master.master,
-                     app_port->portnumber));
-                  if (iolink_config_port (app_port, port_mode[i]) != 0)
+                  iolink_dl_reset (
+                     iolink_get_port (app_master.master, app_port->portnumber));
+                  if (app_config_port (app_port, port_mode[i]) != 0)
                   {
                      LOG_WARNING (
                         LOG_STATE_ON,
@@ -453,17 +447,17 @@ void iolink_handler (iolink_m_cfg_t m_cfg)
 
             if (((EVENT_COMLOST_0 << i) & event_value) != 0)
             {
-               os_timer_stop (iolink_tsd_tmr[i]);
+               os_timer_stop (app_tsd_timer[i]);
                if (app_port->app_port_state == IOL_STATE_STARTING)
                {
                   /* Wait 500ms before sending new WURQ */
-                  os_timer_set (iolink_tsd_tmr[i], 500 * 1000);
-                  os_timer_start (iolink_tsd_tmr[i]);
+                  os_timer_set (app_tsd_timer[i], 500 * 1000);
+                  os_timer_start (app_tsd_timer[i]);
                }
                else if (app_port->app_port_state != IOL_STATE_STOPPING)
                {
                   /* Send WURQ immediately */
-                  iolink_retry_estcom (NULL, (void *)i);
+                  app_retry_estcom (NULL, (void *)i);
                }
                else // (app_port->app_port_state == IOL_STATE_STOPPING)
                {
@@ -475,8 +469,8 @@ void iolink_handler (iolink_m_cfg_t m_cfg)
    }
 }
 
-static void handle_smi_deviceevent (
-   iolink_app_port_ctx_t * app_port,
+static void app_handle_smi_deviceevent (
+   app_port_ctx_t * app_port,
    arg_block_devevent_t * arg_block_devevent)
 {
    if (app_port->type == GOLDEN)
@@ -498,13 +492,13 @@ static void handle_smi_deviceevent (
    }
 }
 
-static void handle_smi_portevent (
-   iolink_app_port_ctx_t * app_port,
+static void app_handle_smi_portevent (
+   app_port_ctx_t * app_port,
    diag_entry_t * event)
 {
-   uint8_t portnumber                   = app_port->portnumber;
-   iolink_app_master_ctx_t * app_master = app_port->app_master;
-   uint8_t port_index                   = portnumber - 1;
+   uint8_t portnumber       = app_port->portnumber;
+   app_master_ctx_t * app_m = app_port->app_master;
+   uint8_t port_index       = portnumber - 1;
 
    if (
       ((app_port->type == GOLDEN) || (app_port->type == UNKNOWN)) &&
@@ -537,7 +531,7 @@ static void handle_smi_portevent (
    {
    case IOLINK_EVENTCODE_PORT_STATUS_CHANGE:
       /* Port status changed - Use SMI_PortStatus() for details */
-      os_event_set (app_master->app_event, (EVENT_PORTE_0 << port_index));
+      os_event_set (app_m->app_event, (EVENT_PORTE_0 << port_index));
       break;
    case IOLINK_EVENTCODE_BAD_DID:
    case IOLINK_EVENTCODE_BAD_VID:
@@ -547,7 +541,7 @@ static void handle_smi_portevent (
          __func__,
          portnumber);
       /* Port status changed - Use SMI_PortStatus() for details */
-      os_event_set (app_master->app_event, (EVENT_PORTE_0 << port_index));
+      os_event_set (app_m->app_event, (EVENT_PORTE_0 << port_index));
       break;
    case IOLINK_EVENTCODE_NO_DEV: /* COMLOST */
       if (app_port->app_port_state != IOL_STATE_STARTING)
@@ -559,7 +553,7 @@ static void handle_smi_portevent (
             portnumber);
       }
 
-      os_event_set (app_master->app_event, (EVENT_COMLOST_0 << port_index));
+      os_event_set (app_m->app_event, (EVENT_COMLOST_0 << port_index));
       break;
    case IOLINK_EVENTCODE_BACKUP_INCON:
    case IOLINK_EVENTCODE_BACKUP_INCON_SIZE:
@@ -578,8 +572,8 @@ static void handle_smi_portevent (
    }
 }
 
-static void handle_smi_joberror (
-   iolink_app_port_ctx_t * app_port,
+static void app_handle_smi_joberror (
+   app_port_ctx_t * app_port,
    iolink_arg_block_id_t ref_arg_block_id,
    arg_block_joberror_t * arg_block_err)
 {
@@ -617,15 +611,15 @@ static void handle_smi_joberror (
    }
 }
 
-static void SMI_cnf_cb (
+static void app_smi_cnf_cb (
    void * arg,
    uint8_t portnumber,
    iolink_arg_block_id_t ref_arg_block_id,
    uint16_t arg_block_len,
    arg_block_t * arg_block)
 {
-   iolink_app_master_ctx_t * app_m  = arg;
-   iolink_app_port_ctx_t * app_port = &app_m->app_port[portnumber - 1];
+   app_master_ctx_t * app_m  = arg;
+   app_port_ctx_t * app_port = &app_m->app_port[portnumber - 1];
 
    bool match_found = true;
 
@@ -634,7 +628,7 @@ static void SMI_cnf_cb (
    switch (arg_block->id)
    {
    case IOLINK_ARG_BLOCK_ID_JOB_ERROR:
-      handle_smi_joberror (
+      app_handle_smi_joberror (
          app_port,
          ref_arg_block_id,
          (arg_block_joberror_t *)arg_block);
@@ -642,7 +636,7 @@ static void SMI_cnf_cb (
       break;
    case IOLINK_ARG_BLOCK_ID_PORT_STATUS_LIST:
    {
-      iolink_app_port_status_t * port_status = &app_port->status;
+      app_port_status_t * port_status = &app_port->status;
       arg_block_portstatuslist_t * port_status_list =
          (arg_block_portstatuslist_t *)arg_block;
 
@@ -662,12 +656,12 @@ static void SMI_cnf_cb (
       /* SMI_PortEvent_ind */
       arg_block_portevent_t * arg_block_portevent = (arg_block_portevent_t *)arg_block;
       LOG_DEBUG (LOG_STATE_ON, "%s: IOLINK_ARG_BLOCK_ID_PORT_EVENT\n", __func__);
-      handle_smi_portevent (app_port, &arg_block_portevent->event);
+      app_handle_smi_portevent (app_port, &arg_block_portevent->event);
       break;
    case IOLINK_ARG_BLOCK_ID_DEV_EVENT:
       /* SMI_DeviceEvent_ind */
       LOG_DEBUG (LOG_STATE_ON, "%s: IOLINK_ARG_BLOCK_ID_DEV_EVENT\n", __func__);
-      handle_smi_deviceevent (app_port, (arg_block_devevent_t *)arg_block);
+      app_handle_smi_deviceevent (app_port, (arg_block_devevent_t *)arg_block);
       break;
    case IOLINK_ARG_BLOCK_ID_OD_RD:
       /* SMI_DeviceRead_cnf */
@@ -739,8 +733,8 @@ static void SMI_cnf_cb (
    }
 }
 
-iolink_smi_errortypes_t wait_for_cnf (
-   iolink_app_port_ctx_t * app_port,
+iolink_smi_errortypes_t app_wait_for_cnf (
+   app_port_ctx_t * app_port,
    uint32_t mask,
    uint32_t ms)
 {

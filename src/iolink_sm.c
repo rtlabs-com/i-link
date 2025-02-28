@@ -2041,7 +2041,7 @@ static void sm_DL_Read_cnf_cb (iolink_job_t * job)
 #endif
       uint8_t new_cycletime     = (value < mincycletime) ? mincycletime : value;
 
-#ifdef IOLINKMASTER_USB_MODE_ENABLE
+#ifdef ILINK_USB_MODE_ENABLE
       if (new_cycletime < MIN_CYCL_TIME_32MS)
       {
          new_cycletime = MIN_CYCL_TIME_32MS;

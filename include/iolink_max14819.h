@@ -74,6 +74,9 @@ typedef struct iolink_14819_cfg
    /** SPI address of the transceiver */
    uint8_t chip_address;
 
+   /** IRQ line used to react to events */
+   uint32_t chip_irq;
+
    /** Identification of the SPI slave */
    const char * spi_slave_name;
 
@@ -130,11 +133,15 @@ typedef struct iolink_14819_cfg
 iolink_hw_drv_t * iolink_14819_init (const iolink_14819_cfg_t * cfg);
 
 /**
- * Interrupt service routine for the iolink_max14819 driver instance.
+ * Dump contents of all hardware registers to the log.
  *
- * @param arg     Reference to the driver instance
+ * Calls os_log() with current value of each hardware register.
+ *
+ * May be used for debugging purposes.
+ *
+ * @param drv     Driver handle.
  */
-void iolink_14819_isr (void * arg);
+void iolink_14819_dump_registers (iolink_hw_drv_t * drv);
 
 #ifdef __cplusplus
 }

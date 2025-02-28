@@ -17,12 +17,12 @@
 #include "osal.h"
 #include "osal_log.h"
 #include "iolink.h"
-#include "iolink_main.h"
-#include "iolink_dl.h"
-#include "iolink_handler.h"
+#include "iolink_main.h" /* TODO Use headers from include/ directory */
+#include "iolink_dl.h"   /* TODO Use headers from include/ directory */
+#include "app_handler.h"
 
-iolink_smi_errortypes_t do_smi_device_write (
-   iolink_app_port_ctx_t * app_port,
+iolink_smi_errortypes_t app_smi_device_write (
+   app_port_ctx_t * app_port,
    uint16_t index,
    uint8_t subindex,
    uint8_t len,
@@ -58,11 +58,11 @@ iolink_smi_errortypes_t do_smi_device_write (
                 : IOLINK_SMI_ERRORTYPE_APP_DEV; // TODO
    }
 
-   return wait_for_cnf (app_port, SMI_WRITE_CNF, 10000);
+   return app_wait_for_cnf (app_port, SMI_WRITE_CNF, 10000);
 }
 
-iolink_smi_errortypes_t do_smi_device_read (
-   iolink_app_port_ctx_t * app_port,
+iolink_smi_errortypes_t app_smi_device_read (
+   app_port_ctx_t * app_port,
    uint16_t index,
    uint8_t subindex,
    uint8_t len,
@@ -154,8 +154,8 @@ iolink_smi_errortypes_t do_smi_device_read (
    return errortype;
 }
 
-uint8_t do_smi_pdout (
-   iolink_app_port_ctx_t * app_port,
+uint8_t app_smi_pdout (
+   app_port_ctx_t * app_port,
    bool output_enable,
    uint8_t len,
    const uint8_t * data)
@@ -179,7 +179,7 @@ uint8_t do_smi_pdout (
    return (err == IOLINK_ERROR_NONE) ? 0 : 1;
 }
 
-int8_t do_smi_pdin (iolink_app_port_ctx_t * app_port, bool * valid, uint8_t * pdin)
+int8_t app_smi_pdin (app_port_ctx_t * app_port, bool * valid, uint8_t * pdin)
 {
    arg_block_void_t arg_block_void;
    int8_t len = 0;
@@ -203,7 +203,7 @@ int8_t do_smi_pdin (iolink_app_port_ctx_t * app_port, bool * valid, uint8_t * pd
          *valid = !(app_port->pdin.pqi & IOLINK_PORT_QUALIFIER_INFO_PQ_INVALID);
 
          iolink_port_t * port =
-            iolink_get_port (iolink_app_master.master, app_port->portnumber);
+            iolink_get_port (app_master.master, app_port->portnumber);
          iolink_get_dl_ctx (port)->pd_handler.pd_valid = *valid;
       }
    }
@@ -211,7 +211,7 @@ int8_t do_smi_pdin (iolink_app_port_ctx_t * app_port, bool * valid, uint8_t * pd
    return len;
 }
 
-uint8_t do_smi_pdinout (iolink_app_port_ctx_t * app_port)
+uint8_t app_smi_pdinout (app_port_ctx_t * app_port)
 {
    arg_block_void_t arg_block_void;
 

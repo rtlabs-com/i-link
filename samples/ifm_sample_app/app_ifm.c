@@ -18,17 +18,17 @@
 #include "osal.h"
 #include "osal_log.h"
 #include "iolink.h"
-#include "iolink_handler.h"
-#include "iolink_smi.h"
+#include "app_handler.h"
+#include "app_smi.h"
 
 #define RFID_DATA_SIZE 8
 
-static bool ifmrfid_get_tag_present (uint8_t * data)
+static bool app_ifm_rfid_get_tag_present (uint8_t * data)
 {
    return (data[1] & 0x04);
 }
 
-static uint8_t ifmrfid_get_error_code (uint8_t * data)
+static uint8_t app_ifm_rfid_get_error_code (uint8_t * data)
 {
    return data[31];
 }
@@ -48,13 +48,13 @@ static bool is_all_zeroes (uint8_t * data, int length)
    return true;
 }
 
-static void ifmrfid_run (iolink_app_port_ctx_t * app_port)
+static void app_ifm_rfid_run (app_port_ctx_t * app_port)
 {
    uint8_t port_index = app_port->portnumber - 1;
    uint8_t pdata[IOLINK_PD_MAX_SIZE];
    static bool tag_is_present[IOLINK_NUM_PORTS] = {false};
 
-   if (do_smi_pdin (app_port, NULL, pdata) != IOLINK_PD_MAX_SIZE)
+   if (app_smi_pdin (app_port, NULL, pdata) != IOLINK_PD_MAX_SIZE)
    {
       LOG_WARNING (
          LOG_STATE_ON,
@@ -64,7 +64,7 @@ static void ifmrfid_run (iolink_app_port_ctx_t * app_port)
       return;
    }
 
-   uint8_t error_code = ifmrfid_get_error_code (pdata);
+   uint8_t error_code = app_ifm_rfid_get_error_code (pdata);
    if (error_code != 0)
    {
       LOG_ERROR (
@@ -76,7 +76,7 @@ static void ifmrfid_run (iolink_app_port_ctx_t * app_port)
       return;
    }
 
-   if (ifmrfid_get_tag_present (pdata))
+   if (app_ifm_rfid_get_tag_present (pdata))
    {
       if (!tag_is_present[port_index]) // tagPresent transition from 0 to 1
       {
@@ -116,7 +116,7 @@ static void ifmrfid_run (iolink_app_port_ctx_t * app_port)
    }
 }
 
-void ifmrfid_setup (iolink_app_port_ctx_t * app_port)
+void app_ifm_rfid_setup (app_port_ctx_t * app_port)
 {
    uint8_t data[2] = {0, 0};
 
@@ -124,7 +124,7 @@ void ifmrfid_setup (iolink_app_port_ctx_t * app_port)
 
    // Blocksize 4
    data[0] = 4;
-   if (do_smi_device_write (app_port, 1900, 0, 1, data) != IOLINK_ERROR_NONE)
+   if (app_smi_device_write (app_port, 1900, 0, 1, data) != IOLINK_ERROR_NONE)
    {
       LOG_ERROR (
          LOG_STATE_ON,
@@ -135,7 +135,7 @@ void ifmrfid_setup (iolink_app_port_ctx_t * app_port)
 
    // Data order normal
    data[0] = 0;
-   if (do_smi_device_write (app_port, 1901, 0, 1, data) != IOLINK_ERROR_NONE)
+   if (app_smi_device_write (app_port, 1901, 0, 1, data) != IOLINK_ERROR_NONE)
    {
       LOG_ERROR (
          LOG_STATE_ON,
@@ -147,7 +147,7 @@ void ifmrfid_setup (iolink_app_port_ctx_t * app_port)
    // Data hold time
    data[0] = 0;
    data[1] = 50;
-   if (do_smi_device_write (app_port, 1902, 0, 2, data) != IOLINK_ERROR_NONE)
+   if (app_smi_device_write (app_port, 1902, 0, 2, data) != IOLINK_ERROR_NONE)
    {
       LOG_ERROR (
          LOG_STATE_ON,
@@ -158,7 +158,7 @@ void ifmrfid_setup (iolink_app_port_ctx_t * app_port)
 
    // Auto read/write length
    data[0] = 4;
-   if (do_smi_device_write (app_port, 1904, 0, 1, data) != IOLINK_ERROR_NONE)
+   if (app_smi_device_write (app_port, 1904, 0, 1, data) != IOLINK_ERROR_NONE)
    {
       LOG_ERROR (
          LOG_STATE_ON,
@@ -169,7 +169,7 @@ void ifmrfid_setup (iolink_app_port_ctx_t * app_port)
 
    app_port->type = IFM_RFID;
 
-   app_port->run_function = ifmrfid_run;
+   app_port->run_function = app_ifm_rfid_run;
 
    app_port->app_port_state = IOL_STATE_RUNNING;
 }
@@ -205,7 +205,7 @@ void ifmrfid_setup (iolink_app_port_ctx_t * app_port)
 
 #define IFM_MHI_PD_SIZE 16
 
-static void ifmHMI_run (iolink_app_port_ctx_t * app_port)
+static void app_ifm_hmi_run (app_port_ctx_t * app_port)
 {
    static uint32_t itr          = 0;
    static uint8_t prev_hmi_pdin = 0;
@@ -236,7 +236,7 @@ static void ifmHMI_run (iolink_app_port_ctx_t * app_port)
       /* 90 or 91, description of line 1 and 2 */
       uint16_t index = 90 + (addr % 2);
 
-      if (do_smi_device_write (app_port, index, 0, sizeof (data), data) != IOLINK_ERROR_NONE)
+      if (app_smi_device_write (app_port, index, 0, sizeof (data), data) != IOLINK_ERROR_NONE)
       {
          LOG_WARNING (
             LOG_STATE_ON,
@@ -258,7 +258,7 @@ static void ifmHMI_run (iolink_app_port_ctx_t * app_port)
       addr++;
    }
 
-   if (do_smi_pdin (app_port, &pdin_valid, &hmi_pdin) != sizeof (hmi_pdin) != IOLINK_ERROR_NONE)
+   if (app_smi_pdin (app_port, &pdin_valid, &hmi_pdin) != sizeof (hmi_pdin) != IOLINK_ERROR_NONE)
    {
       LOG_WARNING (
          LOG_STATE_ON,
@@ -319,13 +319,13 @@ static void ifmHMI_run (iolink_app_port_ctx_t * app_port)
          data[LAYOUT]           = TWO_LINES;
       }
 
-      do_smi_pdout (app_port, true, sizeof (data), data);
+      app_smi_pdout (app_port, true, sizeof (data), data);
       show_text = !show_text;
    }
 
    if ((itr % 2048) == 0)
    {
-      if (do_smi_device_read (app_port, 90, 0, 17, NULL, NULL) != IOLINK_ERROR_NONE)
+      if (app_smi_device_read (app_port, 90, 0, 17, NULL, NULL) != IOLINK_ERROR_NONE)
       {
          LOG_WARNING (
             LOG_STATE_ON,
@@ -337,7 +337,7 @@ static void ifmHMI_run (iolink_app_port_ctx_t * app_port)
 
    if ((itr % 8192) == 0)
    {
-      if (do_smi_pdinout (app_port) != IOLINK_ERROR_NONE)
+      if (app_smi_pdinout (app_port) != IOLINK_ERROR_NONE)
       {
          LOG_WARNING (
             LOG_STATE_ON,
@@ -348,7 +348,7 @@ static void ifmHMI_run (iolink_app_port_ctx_t * app_port)
    }
 }
 
-void ifmHMI_setup (iolink_app_port_ctx_t * app_port)
+void app_ifm_hmi_setup (app_port_ctx_t * app_port)
 {
    uint8_t data[IFM_MHI_PD_SIZE];
    bzero (data, sizeof (data));
@@ -360,11 +360,11 @@ void ifmHMI_setup (iolink_app_port_ctx_t * app_port)
    data[LEDS]             = LED_1_ON | LED_2_OFF;
    data[LAYOUT]           = TWO_LINES;
 
-   do_smi_pdout (app_port, true, sizeof (data), data);
+   app_smi_pdout (app_port, true, sizeof (data), data);
 
    app_port->type = IFM_HMI;
 
-   app_port->run_function = ifmHMI_run;
+   app_port->run_function = app_ifm_hmi_run;
 
    app_port->app_port_state = IOL_STATE_RUNNING;
 }

@@ -83,7 +83,7 @@
  * IO-Link HW
  */
 #ifndef IOLINK_HW
-#define IOLINK_HW IOLINK_HW_MAX14819
+#define IOLINK_HW (IOLINK_HW_@IOLINK_HW@)
 #endif
 
 #if IOLINK_HW == IOLINK_HW_MAX14819

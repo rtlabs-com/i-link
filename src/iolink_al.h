@@ -25,7 +25,7 @@
 #include "iolink_main.h" /* iolink_job_t */
 #include "iolink.h"
 #include "iolink_types.h"
-#include "options.h" /* IOLINK_MAX_EVENTS */
+#include "iolink_options.h" /* IOLINK_MAX_EVENTS */
 #include "osal.h"
 
 #ifdef __cplusplus

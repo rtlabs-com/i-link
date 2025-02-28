@@ -13,7 +13,7 @@
  * full license information.
  ********************************************************************/
 
-#include "options.h"
+#include "iolink_options.h"
 #include "osal.h"
 #include <gtest/gtest.h>
 

@@ -18,7 +18,7 @@
 
 #include <gtest/gtest.h>
 #include "mocks.h"
-#include "options.h"
+#include "iolink_options.h"
 #include "iolink_main.h"
 
 #include <string.h> /* memset */
@@ -27,10 +27,10 @@
 #define ARRAY_SIZE(ar) (sizeof (ar) / sizeof (ar[0]))
 #endif /* ARRAY_SIZE */
 
-#define IOLINK_MASTER_THREAD_STACK_SIZE (4 * 1024)
-#define IOLINK_MASTER_THREAD_PRIO       6
-#define IOLINK_DL_THREAD_STACK_SIZE     1500
-#define IOLINK_DL_THREAD_PRIO           (IOLINK_MASTER_THREAD_PRIO + 1)
+#define APP_MASTER_THREAD_STACK_SIZE (4 * 1024)
+#define APP_MASTER_THREAD_PRIO       6
+#define APP_DL_THREAD_STACK_SIZE     1500
+#define APP_DL_THREAD_PRIO           (APP_MASTER_THREAD_PRIO + 1)
 
 typedef struct
 {
@@ -68,10 +68,10 @@ class TestBase : public ::testing::Test
          .cb_pd                    = NULL,
          .port_cnt                 = NELEMENTS (port_cfgs),
          .port_cfgs                = port_cfgs,
-         .master_thread_prio       = IOLINK_MASTER_THREAD_PRIO,
-         .master_thread_stack_size = IOLINK_MASTER_THREAD_STACK_SIZE,
-         .dl_thread_prio           = IOLINK_DL_THREAD_PRIO,
-         .dl_thread_stack_size     = IOLINK_DL_THREAD_STACK_SIZE,
+         .master_thread_prio       = APP_MASTER_THREAD_PRIO,
+         .master_thread_stack_size = APP_MASTER_THREAD_STACK_SIZE,
+         .dl_thread_prio           = APP_DL_THREAD_PRIO,
+         .dl_thread_stack_size     = APP_DL_THREAD_STACK_SIZE,
       };
       m = iolink_m_init (&m_cfg);
 

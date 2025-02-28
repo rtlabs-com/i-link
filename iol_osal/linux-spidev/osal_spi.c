@@ -2,7 +2,7 @@
 #include <sys/ioctl.h>
 #include "osal_spi.h"
 #include "osal_log.h"
-#include "options.h"
+#include "iolink_options.h"
 #include "fcntl.h"
 #include "unistd.h"
 

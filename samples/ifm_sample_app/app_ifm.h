@@ -13,18 +13,18 @@
  * full license information.
  ********************************************************************/
 
-#ifndef IOLINK_IFM_H
-#define IOLINK_IFM_H
+#ifndef APP_IFM_H
+#define APP_IFM_H
 
-#include "iolink_handler.h"
+#include "app_handler.h"
 
 #define IFM_VENDOR_ID 0x0136
 
 #define IFM_RFID_DEVICE_ID 0x03C7
 #define IFM_HMI_DEVICE_ID  0x02A9
 
-void ifmrfid_setup (iolink_app_port_ctx_t * app_port);
+void app_ifm_rfid_setup (app_port_ctx_t * app_port);
 
-void ifmHMI_setup (iolink_app_port_ctx_t * app_port);
+void app_ifm_hmi_setup (app_port_ctx_t * app_port);
 
-#endif // IOLINK_IFM_H
+#endif // APP_IFM_H

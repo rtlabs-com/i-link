@@ -11,6 +11,7 @@ extern "C" {
  * the FTDI chip.*/
 extern os_mutex_t * ftdi_io_mutex;
 
+
 #ifdef __cplusplus
 }
 #endif

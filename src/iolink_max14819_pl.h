@@ -60,9 +60,6 @@ typedef struct iolink_14819_drv
    os_mutex_t * exclusive;
 
    os_event_t * dl_event[MAX14819_NUM_CHANNELS];
-#ifdef __rtk__
-   gpio_t pin[MAX14819_NUM_CHANNELS];
-#endif
 } iolink_14819_drv_t;
 
 #ifdef __cplusplus
