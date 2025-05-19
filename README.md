@@ -10,10 +10,7 @@ including a porting layer.
 
 Also, C++ (any version) is supported.
 
-RT-Labs I-Link is developed according to specification 2.3:
-
-* Conformance Class A (Class B upon request)
-* Real Time Class 1
+RT-Labs I-Link is developed according to specification 1.1.3.
 
 Web resources
 -------------
@@ -28,7 +25,6 @@ Features
 * Porting layer provided
 * MAX14819 master transceiver supported
 * The sample application currently supports two different devices from IFM:
-
   * An RFID reader (IFM part number: DTI515)
   * A display device (IFM part number: E30430)
 

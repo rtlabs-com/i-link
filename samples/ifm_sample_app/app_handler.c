@@ -58,7 +58,7 @@ static uint8_t app_verify_smi_masterident (
 {
    arg_block_void_t arg_block_void;
 
-   bzero (&arg_block_void, sizeof (arg_block_void_t));
+   memset (&arg_block_void, 0, sizeof (arg_block_void_t));
    arg_block_void.arg_block.id = IOLINK_ARG_BLOCK_ID_VOID_BLOCK;
 
    iolink_error_t err = SMI_MasterIdentification_req (
@@ -158,7 +158,7 @@ static uint8_t app_config_port_dido (app_port_ctx_t * app_port, bool di)
 {
    arg_block_portconfiglist_t port_cfg;
 
-   bzero (&port_cfg, sizeof (arg_block_portconfiglist_t));
+   memset (&port_cfg, 0, sizeof (arg_block_portconfiglist_t));
 
    app_common_config (
       &port_cfg,
@@ -210,7 +210,7 @@ uint8_t app_get_port_status (app_port_ctx_t * app_port)
 {
    arg_block_void_t arg_block_void;
 
-   bzero (&arg_block_void, sizeof (arg_block_void_t));
+   memset (&arg_block_void, 0, sizeof (arg_block_void_t));
    arg_block_void.arg_block.id = IOLINK_ARG_BLOCK_ID_VOID_BLOCK;
 
    iolink_error_t err = SMI_PortStatus_req (
@@ -321,7 +321,7 @@ static void app_retry_estcom (os_timer_t * tmr, void * arg)
 
 void app_handler (iolink_m_cfg_t m_cfg)
 {
-   long unsigned int i;
+   uint8_t i;
    os_event_t * app_event = os_event_create();
    iolink_pl_mode_t port_mode[IOLINK_NUM_PORTS];
    os_timer_t * app_tsd_timer[IOLINK_NUM_PORTS] = {NULL};
@@ -331,12 +331,12 @@ void app_handler (iolink_m_cfg_t m_cfg)
       if (*m_cfg.port_cfgs[i].mode == iolink_mode_SDCI)
       {
          app_tsd_timer[i] =
-            os_timer_create (1000 * 1000, app_retry_estcom, (void *)i, true);
+            os_timer_create (1000 * 1000, app_retry_estcom, (void *)(uintptr_t)i, true);
       }
    }
 
-   bzero (port_mode, sizeof (port_mode));
-   bzero (&app_master, sizeof (app_master));
+   memset (port_mode, 0, sizeof (port_mode));
+   memset (&app_master, 0, sizeof (app_master));
    app_master.app_event = app_event;
 
    m_cfg.cb_arg = &app_master;
@@ -374,7 +374,7 @@ void app_handler (iolink_m_cfg_t m_cfg)
          {
             LOG_WARNING (
                LOG_STATE_ON,
-               "%s: Failed to config port %lu\n",
+               "%s: Failed to config port %u\n",
                __func__,
                i + 1);
          }
@@ -412,7 +412,7 @@ void app_handler (iolink_m_cfg_t m_cfg)
                   {
                      LOG_WARNING (
                         LOG_STATE_ON,
-                        "%s: Failed to start port %lu\n",
+                        "%s: Failed to start port %u\n",
                         __func__,
                         i + 1);
                   }
@@ -421,7 +421,7 @@ void app_handler (iolink_m_cfg_t m_cfg)
                {
                   LOG_WARNING (
                      LOG_STATE_ON,
-                     "%s: EVENT_PORT for port %lu, when in port_state %u\n",
+                     "%s: EVENT_PORT for port %u, when in port_state %u\n",
                      __func__,
                      i + 1,
                      app_port->app_port_state);
@@ -438,7 +438,7 @@ void app_handler (iolink_m_cfg_t m_cfg)
                   {
                      LOG_WARNING (
                         LOG_STATE_ON,
-                        "%s: Failed to config port %lu\n",
+                        "%s: Failed to config port %u\n",
                         __func__,
                         i + 1);
                   }
@@ -457,7 +457,7 @@ void app_handler (iolink_m_cfg_t m_cfg)
                else if (app_port->app_port_state != IOL_STATE_STOPPING)
                {
                   /* Send WURQ immediately */
-                  app_retry_estcom (NULL, (void *)i);
+                  app_retry_estcom (NULL, (void *)(uintptr_t)i);
                }
                else // (app_port->app_port_state == IOL_STATE_STOPPING)
                {

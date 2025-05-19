@@ -45,6 +45,8 @@
  *
  */
 
+#define IOL_SM_VENDOR_MESCO_ENGINEERING 0x014E
+
 typedef struct iolink_fsm_sm_transition
 {
    iolink_fsm_sm_event_t event;
@@ -275,6 +277,7 @@ static void set_type_2_V (
    uint8_t pdin,
    uint8_t pdout,
    uint8_t onreqdatalengthpermessage,
+   uint8_t cycbyte,
    iolink_mode_vl_t * valuelist);
 static void set_valuelist (
    iolink_mode_vl_t * valuelist,
@@ -352,7 +355,7 @@ static iolink_fsm_sm_event_t sm_DL_Read_Write_req (
    {
       LOG_WARNING (
          IOLINK_SM_LOG,
-         "SM: %u: DL_%s_req failed: %s\n",
+         "SM (%u): DL_%s_req failed: %s\n",
          iolink_get_portnumber (port),
          (read) ? "Read" : "Write",
          iolink_error_literals[res]);
@@ -384,7 +387,7 @@ static void sm_DL_Write_Devicemode_req (
    {
       LOG_WARNING (
          IOLINK_SM_LOG,
-         "%u: DL_Write_Devicemode_req failed: %s\n",
+         "SM (%u): DL_Write_Devicemode_req failed: %s\n",
          iolink_get_portnumber (port),
          iolink_error_literals[res]);
    }
@@ -423,7 +426,7 @@ static iolink_fsm_sm_event_t sm_wr_master_cycl (
    {
       LOG_WARNING (
          IOLINK_SM_LOG,
-         "%u: AL_Write_req failed: %s\n",
+         "SM (%u): AL_Write_req failed: %s\n",
          iolink_get_portnumber (port),
          iolink_error_literals[res]);
    }
@@ -730,7 +733,10 @@ static iolink_fsm_sm_event_t sm_smoperate_ignore (
    /* It is possible to receive SM_Operate after a COMLOST, when DS is disabled.
     * Hence, we ignore this SM_Operate.
     */
-   LOG_DEBUG (IOLINK_SM_LOG, "SM ignore SM_Operate for state PortInactive\n");
+   LOG_DEBUG (
+      IOLINK_SM_LOG,
+      "SM (%u): ignore SM_Operate for state PortInactive\n",
+      iolink_get_portnumber (port));
 
    return SM_EVENT_NONE;
 }
@@ -746,8 +752,9 @@ static iolink_fsm_sm_event_t sm_comlost_ignore (
     */
    LOG_DEBUG (
       IOLINK_SM_LOG,
-      "SM ignore COMLOST wait for AL_{Read,Write}_cnf() or "
-      "DL_Write_Devicemode_cnf()\n");
+      "SM (%u): ignore COMLOST wait for AL_{Read,Write}_cnf() or "
+      "DL_Write_Devicemode_cnf()\n",
+      iolink_get_portnumber (port));
 
    return SM_EVENT_NONE;
 }
@@ -883,7 +890,8 @@ static iolink_fsm_sm_event_t sm_dido (
    {
       LOG_ERROR (
          IOLINK_SM_LOG,
-         "SM: dido, invalid iolink_sm_target_mode_t (%u)\n",
+         "SM (%u): dido, invalid iolink_sm_target_mode_t (%u)\n",
+         iolink_get_portnumber (port),
          parameterlist->mode);
    }
 
@@ -988,7 +996,8 @@ static void sm_DL_Write_cnf_restart_dev (iolink_job_t * job)
       {
          LOG_ERROR (
             IOLINK_SM_LOG,
-            "SM: %s, unexpected mode (%u)\n",
+            "SM (%u): %s, unexpected mode (%u)\n",
+            iolink_get_portnumber (port),
             __func__,
             config_paramlist->mode);
          CC_ASSERT (0); /* Invalid mode */
@@ -1032,7 +1041,8 @@ static void sm_DL_Write_cnf_waiton_operate (iolink_job_t * job)
    {
       LOG_WARNING (
          IOLINK_SM_LOG,
-         "%s: Unexpected DL_Write_cnf(), %u\n",
+         "SM (%u): %s: Unexpected DL_Write_cnf(), %u\n",
+         iolink_get_portnumber (port),
          __func__,
          addr);
    }
@@ -1397,6 +1407,7 @@ static void set_type_2_V (
    uint8_t pdin,
    uint8_t pdout,
    uint8_t onreqdatalengthpermessage,
+   uint8_t cycbyte,
    iolink_mode_vl_t * valuelist)
 {
    if ((pdin_isbytes && (pdin != 1)) || (!pdin_isbytes && (pdin < 17)))
@@ -1409,6 +1420,7 @@ static void set_type_2_V (
                                                      : ((pdout + 7) >> 3);
          valuelist->onreqdatalengthpermessage = onreqdatalengthpermessage;
          valuelist->type                      = IOLINK_MSEQTYPE_TYPE_2_V;
+         valuelist->time                      = cycbyte;
       }
    }
 }
@@ -1650,7 +1662,14 @@ static iolink_error_t populate_valuelist (
             }
             else
             {
-               set_type_2_V (pdin_isbytes, pdout_isbytes, pdin, pdout, 1, valuelist);
+               set_type_2_V (
+                  pdin_isbytes,
+                  pdout_isbytes,
+                  pdin,
+                  pdout,
+                  1,
+                  cycbyte,
+                  valuelist);
             }
             break;
          case 5:
@@ -1667,6 +1686,7 @@ static iolink_error_t populate_valuelist (
                   pdin,
                   pdout,
                   onreqdatalength,
+                  cycbyte,
                   valuelist);
             }
             else if (oper_m != 5)
@@ -1755,7 +1775,8 @@ static void sm_DL_Mode_ind_cb_preop_op (
    {
       LOG_ERROR (
          IOLINK_SM_LOG,
-         "%s: bad DL_Mode = MH mode %s (%u)\n",
+         "SM (%u): %s: bad DL_Mode = MH mode %s (%u)\n",
+         iolink_get_portnumber (job->port),
          __func__,
          iolink_mhmode_literals[realmode],
          realmode);
@@ -1806,7 +1827,8 @@ static void sm_DL_Mode_ind_cb_inactive (iolink_job_t * job)
    default:
       LOG_ERROR (
          IOLINK_SM_LOG,
-         "%s: bad DL_Mode = MH mode %s (%u)\n",
+         "SM (%u): %s: bad DL_Mode = MH mode %s (%u)\n",
+         iolink_get_portnumber (job->port),
          __func__,
          iolink_mhmode_literals[realmode],
          realmode);
@@ -1822,7 +1844,8 @@ static void sm_DL_Mode_ind_cb_inspectionfault (iolink_job_t * job)
    {
       LOG_ERROR (
          IOLINK_SM_LOG,
-         "%s: unexpected DL_Mode = MH mode %s (%u)\n",
+         "SM (%u): %s: unexpected DL_Mode = MH mode %s (%u)\n",
+         iolink_get_portnumber (job->port),
          __func__,
          iolink_mhmode_literals[realmode],
          realmode);
@@ -1837,7 +1860,7 @@ static void sm_DL_Mode_ind_cb (iolink_job_t * job)
 
    LOG_DEBUG (
       IOLINK_SM_LOG,
-      "(%u): %s: DL_Mode = MH mode %s (%u)\n",
+      "SM (%u): %s: DL_Mode = MH mode %s (%u)\n",
       iolink_get_portnumber (port),
       __func__,
       iolink_mhmode_literals[realmode],
@@ -1850,7 +1873,8 @@ static void sm_DL_Mode_ind_cb (iolink_job_t * job)
       sm->comrate = realmode;
       LOG_INFO (
          IOLINK_SM_LOG,
-         "%s: Bad realmode MH mode %s\n",
+         "SM (%u), %s: Bad realmode MH mode %s\n",
+         iolink_get_portnumber (port),
          __func__,
          iolink_mhmode_literals[realmode]);
    }
@@ -1867,7 +1891,8 @@ static void sm_DL_Mode_ind_cb (iolink_job_t * job)
       case SM_STATE_DIDO:
          LOG_ERROR (
             IOLINK_SM_LOG,
-            "%s: COMLOST when in SM state %s\n",
+            "SM (%u): %s: COMLOST when in SM state %s\n",
+            iolink_get_portnumber (port),
             __func__,
             iolink_sm_state_literals[sm->state]);
          break;
@@ -1896,7 +1921,8 @@ static void sm_DL_Mode_ind_cb (iolink_job_t * job)
       default:
          LOG_ERROR (
             IOLINK_SM_LOG,
-            "%s: bad DL_Mode = MH mode %s (%u)\n",
+            "SM (%u): %s: bad DL_Mode = MH mode %s (%u)\n",
+            iolink_get_portnumber (port),
             __func__,
             iolink_mhmode_literals[realmode],
             realmode);
@@ -1914,7 +1940,7 @@ static void sm_operate_cb (iolink_job_t * job)
 
    if (
       (real_paramlist->revisionid != IOL_DIR_PARAM_REV_V10) ||
-      (real_paramlist->vendorid != 0x014E)) // SDCI_TC_0196
+      (real_paramlist->vendorid != IOL_SM_VENDOR_MESCO_ENGINEERING)) // SDCI_TC_0196
    {
       iolink_sm_event (port, SM_EVENT_WRITE_MASTER_CYCL_REQ);
    }
@@ -1947,7 +1973,7 @@ static void sm_setportcfg_req_cb (iolink_job_t * job)
    default:
       LOG_INFO (
          IOLINK_SM_LOG,
-         "%u: SM state (%s) does not allow setportcfg\n",
+         "SM (%u): state (%s) does not allow setportcfg\n",
          iolink_get_portnumber (port),
          iolink_sm_state_literals[sm->state]);
       // iolink_sm_event (port, SM_EVENT_DL_Mode_COMLOST); // TODO ?!?
@@ -1972,7 +1998,8 @@ static void sm_setportcfg_req_cb (iolink_job_t * job)
 
    LOG_DEBUG (
       IOLINK_SM_LOG,
-      "%s: iolink_sm_target_mode_t = %s\n",
+      "SM (%u): %s: iolink_sm_target_mode_t = %s\n",
+      iolink_get_portnumber (port),
       __func__,
       iolink_sm_target_mode_literals[parameterlist->mode]);
 
@@ -2035,10 +2062,6 @@ static void sm_DL_Read_cnf_cb (iolink_job_t * job)
                                 ? MIN_CYCL_TIME_1
                                 : MIN_CYCL_TIME_2_3;
 
-#ifndef UNIT_TEST
-      static uint8_t older_cycletime;
-      uint8_t old_cycletime = real_paramlist->cycletime;
-#endif
       uint8_t new_cycletime     = (value < mincycletime) ? mincycletime : value;
 
 #ifdef ILINK_USB_MODE_ENABLE
@@ -2047,21 +2070,13 @@ static void sm_DL_Read_cnf_cb (iolink_job_t * job)
          new_cycletime = MIN_CYCL_TIME_32MS;
          LOG_DEBUG (
             IOLINK_SM_LOG,
-            "SM: reducing cycle time to %x due to slow os/interface\n",
+            "SM (%u): reducing cycle time to %x due to slow os/interface\n",
+            iolink_get_portnumber (port),
             new_cycletime);
       }
 #endif
 
       real_paramlist->cycletime = new_cycletime;
-#ifndef UNIT_TEST
-      if (
-         (value != FOUR_MS) || (new_cycletime != MIN_CYCL_TIME_2_3) ||
-         (old_cycletime != older_cycletime))
-      {
-         iolink_pl_set_cycletime (port, new_cycletime);
-      }
-      older_cycletime = old_cycletime;
-#endif
    }
       sm->dev_com.mincycle = value;
       break;
@@ -2093,7 +2108,8 @@ static void sm_DL_Read_cnf_cb (iolink_job_t * job)
       real_paramlist->deviceid |= value;
       LOG_DEBUG (
          IOLINK_SM_LOG,
-         "SM: vendorid = 0x%04x deviceid = 0x%06lx\n",
+         "SM (%u): vendorid = 0x%04x deviceid = 0x%06lx\n",
+         iolink_get_portnumber (port),
          real_paramlist->vendorid,
          (unsigned long)real_paramlist->deviceid);
       break;
@@ -2318,7 +2334,8 @@ void DL_Mode_ind_baud (iolink_port_t * port, iolink_mhmode_t realmode)
       sm->comrate = realmode;
       LOG_DEBUG (
          IOLINK_SM_LOG,
-         "%s: Set realmode MH mode %s\n",
+         "SM (%u): %s: Set realmode MH mode %s\n",
+         iolink_get_portnumber (port),
          __func__,
          iolink_mhmode_literals[realmode]);
    }
@@ -2326,7 +2343,8 @@ void DL_Mode_ind_baud (iolink_port_t * port, iolink_mhmode_t realmode)
    {
       LOG_INFO (
          IOLINK_SM_LOG,
-         "%s: Bad realmode MH mode %s\n",
+         "SM (%u): %s: Bad realmode MH mode %s\n",
+         iolink_get_portnumber (port),
          __func__,
          iolink_mhmode_literals[realmode]);
    }

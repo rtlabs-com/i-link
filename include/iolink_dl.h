@@ -44,6 +44,7 @@ typedef struct iolink_dl iolink_dl_t;
 #define IOLINK_PL_EVENT_TXERR        BIT (3)
 #define IOLINK_PL_EVENT_WURQ         BIT (4)
 #define IOLINK_PL_EVENT_STATUS       BIT (5)
+#define IOLINK_DL_EVENT_RESET        BIT (9)
 #define IOLINK_DL_EVENT_TIMEOUT      BIT (10)
 #define IOLINK_DL_EVENT_TIMEOUT_TCYC BIT (11)
 // #define IOLINK_DL_EVENT_ODH            BIT(12)

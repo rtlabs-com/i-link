@@ -297,7 +297,7 @@ static void app_ifm_hmi_run (app_port_ctx_t * app_port)
       static bool show_text = false;
 
       uint8_t data[IFM_MHI_PD_SIZE];
-      bzero (data, sizeof (data));
+      memset (data, 0, sizeof (data));
 
       if (show_text)
       {
@@ -351,7 +351,7 @@ static void app_ifm_hmi_run (app_port_ctx_t * app_port)
 void app_ifm_hmi_setup (app_port_ctx_t * app_port)
 {
    uint8_t data[IFM_MHI_PD_SIZE];
-   bzero (data, sizeof (data));
+   memset (data, 0, sizeof (data));
 
    LOG_INFO (LOG_STATE_ON, "Set up HMI on port %u\n", app_port->portnumber);
 

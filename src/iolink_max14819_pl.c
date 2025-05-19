@@ -115,6 +115,14 @@
 #define MAX14819_INTERRUPTEN_WURQ          MAX14819_INTERRUPT_WURQ
 #define MAX14819_INTERRUPTEN_STATUS        MAX14819_INTERRUPT_STATUS
 
+#define MAX14819_INTERRUPTEN_MASK_A (MAX14819_INTERRUPT_RX_DATA_RDY_A | \
+                                     MAX14819_INTERRUPT_RX_ERR_A | \
+                                     MAX14819_INTERRUPT_TX_ERR_A)
+
+#define MAX14819_INTERRUPTEN_MASK_B (MAX14819_INTERRUPT_RX_DATA_RDY_B | \
+                                     MAX14819_INTERRUPT_RX_ERR_B | \
+                                     MAX14819_INTERRUPT_TX_ERR_B)
+
 #define MAX14819_REVID_MAX14819          0x0A
 #define MAX14819_REVID_MAX14819A         0x0E
 
@@ -220,13 +228,13 @@ static uint8_t iolink_14819_burst_read_rx (
    uint8_t rxbytes)
 {
    uint8_t rxtxreg                             = REG_TxRxDataA + ch;
-   uint8_t txdata[IOLINK_RXTX_BUFFER_SIZE + 2] = {0};
-   uint8_t rxdata[IOLINK_RXTX_BUFFER_SIZE + 2] = {0};
+   uint8_t txdata[IOLINK_RXTX_BUFFER_SIZE + 1] = {0};
+   uint8_t rxdata[IOLINK_RXTX_BUFFER_SIZE + 1] = {0};
 
    txdata[0] = MAX14819_COMMAND_READ |
                (iolink->chip_address << MAX14819_ADDR_OFFSET) |
                (rxtxreg << MAX14819_REGISTER_OFFSET);
-   _iolink_pl_hw_spi_transfer (iolink->fd_spi, rxdata, txdata, rxbytes + 2);
+   _iolink_pl_hw_spi_transfer (iolink->fd_spi, rxdata, txdata, rxbytes + 1);
    memcpy (data, &rxdata[1], rxbytes);
 
    return rxdata[0];
@@ -308,7 +316,7 @@ static void iolink_14819_set_DO (
 
    os_mutex_lock (iolink->exclusive);
    regval = iolink_14819_read_register (iolink, REG_InterruptEn);
-   iolink_14819_write_register (iolink, REG_InterruptEn, regval & ~(0x05 << ch));
+   iolink_14819_write_register (iolink, REG_InterruptEn, regval & ~(MAX14819_INTERRUPTEN_MASK_A << ch));
    regval = iolink_14819_read_register (iolink, REG_IOStCfgA + ch);
    iolink_14819_write_register (iolink, REG_IOStCfgA + ch, regval | MAX14819_IOSTCFG_TXEN);
    os_mutex_unlock (iolink->exclusive);
@@ -329,7 +337,7 @@ static void iolink_14819_set_DI (
 
    os_mutex_lock (iolink->exclusive);
    regval = iolink_14819_read_register (iolink, REG_InterruptEn);
-   iolink_14819_write_register (iolink, REG_InterruptEn, regval & ~(0x05 << ch));
+   iolink_14819_write_register (iolink, REG_InterruptEn, regval & ~(MAX14819_INTERRUPTEN_MASK_A << ch));
    os_mutex_unlock (iolink->exclusive);
    iolink_14819_write_register (iolink, REG_CQCtrlA + ch, 0x0C);
    iolink_14819_write_register (iolink, REG_MsgCtrlA + ch, 0x01);
@@ -352,7 +360,7 @@ static void iolink_14819_set_SDCI (
    os_mutex_lock (iolink->exclusive);
    // Disable interrupts
    regval = iolink_14819_read_register (iolink, REG_InterruptEn);
-   iolink_14819_write_register (iolink, REG_InterruptEn, regval & ~(0x05 << ch));
+   iolink_14819_write_register (iolink, REG_InterruptEn, regval & ~(MAX14819_INTERRUPTEN_MASK_A << ch));
    // Set registers according to config
    iolink_14819_write_register (iolink, REG_CQCtrlA + ch, cfg->SDCI.cq_ctrl_val);
    iolink_14819_write_register (iolink, REG_MsgCtrlA + ch, cfg->SDCI.msg_ctrl_val);
@@ -366,10 +374,11 @@ static void iolink_14819_set_SDCI (
    iolink_14819_write_register (iolink, REG_CQCfgA + ch, 0x34);
    // Enable interrupts
    regval = iolink_14819_read_register (iolink, REG_InterruptEn);
+   regval |= cfg->SDCI.IntE & (MAX14819_INTERRUPTEN_MASK_A << ch);
    iolink_14819_write_register (
       iolink,
       REG_InterruptEn,
-      regval | (cfg->SDCI.IntE & (0x05 << ch)));
+      regval);
    iolink->is_iolink[ch] = true;
    os_mutex_unlock (iolink->exclusive);
 }
@@ -445,7 +454,7 @@ static void iolink_max14819_clear_errors (
 
    LOG_DEBUG (
       IOLINK_PL_LOG,
-      "%s [ch: %d]: CQErr=0x%02x, DeviceDly=0x%02x\n",
+      "PL: %s [ch: %d]: CQErr=0x%02x, DeviceDly=0x%02x\n",
       __func__,
       ch,
       cqerr,
@@ -672,7 +681,6 @@ static bool iolink_pl_max14819_get_data (
       uint8_t cqctrl = iolink_14819_read_register (iolink, REG_CQCtrlA + ch);
       cqctrl |= MAX14819_CQCTRL_RX_FIFO_RST;
       iolink_14819_write_register (iolink, REG_CQCtrlA + ch, cqctrl);
-      iolink->data_ready[ch] = false;
       os_mutex_unlock (iolink->exclusive);
       return false;
    }
@@ -689,17 +697,15 @@ static bool iolink_pl_max14819_get_data (
       rxbytes = len;
    }
 
-   uint32_t inband = 0;
    if (rxbytes > 0)
    {
-      inband = iolink_14819_burst_read_rx (iolink, ch, rxdata, rxbytes);
+      uint8_t inband = iolink_14819_burst_read_rx (iolink, ch, rxdata, rxbytes);
       if ((inband & MAX14819_SPI_INBAND_IRQ) != 0)
       {
          os_event_set (iolink->dl_event[ch], iolink->pl_flag);
       }
    }
 
-   iolink->data_ready[ch] = false;
    os_mutex_unlock (iolink->exclusive);
 
    return (rxbytes > 0);
@@ -847,11 +853,7 @@ static void iolink_pl_max14819_pl_handler (iolink_hw_drv_t * iolink_hw, void * a
       }
       if (reg & (MAX14819_INTERRUPT_RX_DATA_RDY_A << ch))
       {
-         if (!iolink->data_ready[ch])
-         {
-            iolink->data_ready[ch] = true;
-            os_event_set (iolink->dl_event[ch], IOLINK_PL_EVENT_RXRDY);
-         }
+         os_event_set (iolink->dl_event[ch], IOLINK_PL_EVENT_RXRDY);
       }
    }
 

@@ -32,7 +32,7 @@ iolink_smi_errortypes_t app_smi_device_write (
    uint8_t buffer[arg_block_len];
    arg_block_od_t * arg_block_od = (arg_block_od_t *)buffer;
 
-   bzero (buffer, arg_block_len);
+   memset (buffer, 0, arg_block_len);
    arg_block_od->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_WR;
    arg_block_od->index        = index;
    arg_block_od->subindex     = subindex;
@@ -84,7 +84,7 @@ iolink_smi_errortypes_t app_smi_device_read (
    uint8_t buffer[arg_block_len];
    arg_block_od_t * arg_block_od = (arg_block_od_t *)buffer;
 
-   bzero (buffer, arg_block_len);
+   memset (buffer, 0, arg_block_len);
    arg_block_od->arg_block.id = IOLINK_ARG_BLOCK_ID_OD_RD;
    arg_block_od->index        = index;
    arg_block_od->subindex     = subindex;
@@ -184,7 +184,7 @@ int8_t app_smi_pdin (app_port_ctx_t * app_port, bool * valid, uint8_t * pdin)
    arg_block_void_t arg_block_void;
    int8_t len = 0;
 
-   bzero (&arg_block_void, sizeof (arg_block_void_t));
+   memset (&arg_block_void, 0, sizeof (arg_block_void_t));
    arg_block_void.arg_block.id = IOLINK_ARG_BLOCK_ID_VOID_BLOCK;
 
    if (
@@ -215,7 +215,7 @@ uint8_t app_smi_pdinout (app_port_ctx_t * app_port)
 {
    arg_block_void_t arg_block_void;
 
-   bzero (&arg_block_void, sizeof (arg_block_void_t));
+   memset (&arg_block_void, 0, sizeof (arg_block_void_t));
    arg_block_void.arg_block.id = IOLINK_ARG_BLOCK_ID_VOID_BLOCK;
 
    iolink_error_t err = SMI_PDInOut_req (

@@ -7,15 +7,13 @@
 #include "osal_spi_internal.h"
 #include "string.h"
 
-#define CLK_FREQUENCY            2.5 * 1000 * 1000
-#define CMD_BUFF_SIZE            3
-#define SET_CS_PIN_BUFF_SIZE     3
+#define CLK_FREQUENCY            10 * 1000 * 1000
 #define BUFF_SIZE                250
 #define CLOCK_SETTINGS_BUFF_SIZE 4
 #define PIN_SETUP_BUFF_SIZE      5
 #define READ_TIMEOUT_MS          100
 #define WRITE_TIMEOUT_MS         100
-#define LATENCY                  1
+#define LATENCY                  2
 #define DEFAULT_SLEEP_TIME       2
 #define INIT_SLEEP_USEC          200 * 1000
 
@@ -23,6 +21,7 @@
 #define MPSSE_CMD_SET_DATA_BITS_LOWBYTE          0x80
 #define MPSSE_CMD_DISABLE_3PHASE_CLOCKING        0x8D
 #define MPSSE_CMD_DATA_BYTES_IN_POS_OUT_NEG_EDGE 0x31
+#define MPSSE_CMD_SEND_IMMEDIATE                 0x87
 #define ENABLE_MPSSE                             0x02
 #define MAX_CLOCK_RATE                           30000000
 #define DISABLE_ADAPTIVE_CLOCKING                0x97
@@ -35,65 +34,7 @@
 #define SET_DIRECTION                            0x0B
 
 os_mutex_t * ftdi_io_mutex;
-
-/**
- * Calculate transfer size.
- *
- * If the difference between n_bytes_to_transfer and n_bytes_transferred is
- * greater than (UINT16_MAX + 1), (UINT16_MAX + 1) will be returned. Otherwise,
- * the difference is returned.
- *
- * @param n_bytes_transfer     In: The number of bytes to be transferred.
- * @param n_bytes_transferred  In: The number of bytes already transferred.
- * @return The number of bytes currently to be transferred, a value between 0 -
- * (UINT16_MAX + 1)
- */
-uint32_t _iolink_calc_current_transfer_size (
-   uint32_t n_bytes_to_transfer,
-   uint32_t n_bytes_transferred)
-{
-   return ((n_bytes_to_transfer - n_bytes_transferred) > 64 * 1024)
-             ? 64 * 1024
-             : (n_bytes_to_transfer - n_bytes_transferred);
-}
-
-/**
- * Set the Chip Select (CS) pin on the FT2232H chip.
- *
- * Since the CS signal is active low, a `true` state lowers the CS
- * signal and a `false` state raises the CS signal.
- *
- * The function logs an error if the write operation fails.
- *
- * @param ftdi_handle   In: A handle to the FTDI device.
- * @param state         In: The CS state (true for low, false for high)
- */
-static void set_cs_pin (void * ftdi_handle, bool state)
-{
-   uint32_t status                   = 0;
-   uint8_t buf[SET_CS_PIN_BUFF_SIZE] = {};
-   uint32_t n_bytes_transferred      = 0;
-   buf[0]                            = MPSSE_CMD_SET_DATA_BITS_LOWBYTE;
-
-   if (state)
-   {
-      buf[1] = SET_CS_LOW;
-   }
-   else
-   {
-      buf[1] = SET_CS_HIGH;
-   }
-
-   buf[2] = SET_DIRECTION;
-   /*Send MPSSE command to set the bits in lowbyte*/
-   status =
-      FT_Write (ftdi_handle, buf, SET_CS_PIN_BUFF_SIZE, &n_bytes_transferred);
-   if (status != FT_OK)
-   {
-      LOG_ERROR (LOG_STATE_ON, "APP: %s: Failed to set_cs_pin\n", __func__);
-      return;
-   }
-}
+uint8_t      ftdi_io_buf[BUFF_SIZE];
 
 /**
  * Configures the FT2232H chip for MPSSE mode, setting timeouts, latency, flow
@@ -114,8 +55,8 @@ static uint32_t cfg_ftdi_prt (void * ftdi_handle, uint32_t clk_freq)
    uint8_t tx_buf[CLOCK_SETTINGS_BUFF_SIZE] = {};
    uint8_t val_L                            = 0;
    uint8_t val_H                            = 0;
-   uint32_t status                          = 0;
-   uint32_t n_bytes_written                 = 0;
+   FT_STATUS status                         = 0;
+   DWORD    n_bytes_written                 = 0;
    uint32_t val                             = 0;
 
    status = FT_ResetDevice (ftdi_handle);
@@ -198,10 +139,10 @@ static uint32_t cfg_ftdi_prt (void * ftdi_handle, uint32_t clk_freq)
  */
 static uint32_t mpsse_setup (void * ftdi_handle)
 {
-   uint32_t status                     = 0;
+   FT_STATUS status                    = 0;
    uint8_t tx_buf[PIN_SETUP_BUFF_SIZE] = {};
-   uint32_t n_bytes_to_transfer        = 0;
-   uint32_t n_bytes_written            = 0;
+   DWORD n_bytes_to_transfer           = 0;
+   DWORD n_bytes_written               = 0;
    tx_buf[0]                           = MPSSE_CMD_DISABLE_3PHASE_CLOCKING;
    tx_buf[1]                           = DISABLE_ADAPTIVE_CLOCKING;
    tx_buf[2]                           = SET_GPIO_CMD;
@@ -290,7 +231,7 @@ void * _iolink_pl_hw_spi_init (const char * spi_slave_name)
 {
    ftdi_io_mutex = os_mutex_create();
    void * ftdi_handle;
-   uint32_t status = 0;
+   FT_STATUS status = 0;
 
    list_devices();
 
@@ -344,75 +285,77 @@ void _iolink_pl_hw_spi_transfer (
    const void * data_written,
    size_t n_bytes_to_transfer)
 {
-   uint32_t status                = 0;
-   uint8_t cmd_buf[CMD_BUFF_SIZE] = {};
-   uint32_t n_bytes_written       = 0;
-   uint32_t current_transfer_size = 0;
-   uint32_t n_bytes_transferred   = 0;
-   uint32_t n_bytes_read          = 0;
+   FT_STATUS status               = 0;
+   DWORD    n_bytes_written       = 0;
+   DWORD    n_bytes_read          = 0;
+   uint8_t * cmd_buf              = ftdi_io_buf;
 
    os_mutex_lock (ftdi_io_mutex);
-   set_cs_pin (ftdi_handle, TRUE);
 
-   while (n_bytes_transferred < (uint32_t)n_bytes_to_transfer)
+   int idx = 0;
+
+   /* chip select */
+   cmd_buf[idx++] = MPSSE_CMD_SET_DATA_BITS_LOWBYTE;
+   cmd_buf[idx++] = SET_CS_LOW;
+   cmd_buf[idx++] = SET_DIRECTION;
+
+   /* payload */
+   cmd_buf[idx++] = MPSSE_CMD_DATA_BYTES_IN_POS_OUT_NEG_EDGE;
+   cmd_buf[idx++] = (uint8_t)((n_bytes_to_transfer - 1) & 0x000000FF);
+   cmd_buf[idx++] = (uint8_t)(((n_bytes_to_transfer - 1) & 0x0000FF00) >> 8);
+
+   memcpy (&cmd_buf[idx], data_written, n_bytes_to_transfer);
+   idx += n_bytes_to_transfer;
+
+   /* chip select */
+   cmd_buf[idx++] = MPSSE_CMD_SET_DATA_BITS_LOWBYTE;
+   cmd_buf[idx++] = SET_CS_HIGH;
+   cmd_buf[idx++] = SET_DIRECTION;
+
+   cmd_buf[idx++] = MPSSE_CMD_SEND_IMMEDIATE;
+
+   /*Send the command buffer to prepare for read and write operation*/
+   status = FT_Write (ftdi_handle, cmd_buf, idx, &n_bytes_written);
+   if (status != FT_OK)
    {
-      current_transfer_size = _iolink_calc_current_transfer_size (
-         (uint32_t)n_bytes_to_transfer,
-         n_bytes_transferred);
-      cmd_buf[0] = MPSSE_CMD_DATA_BYTES_IN_POS_OUT_NEG_EDGE;
-      /* length LSB */
-      cmd_buf[1] = (uint8_t)((current_transfer_size - 1) & 0x000000FF);
-      /* length MSB */
-      cmd_buf[2] = (uint8_t)(((current_transfer_size - 1) & 0x0000FF00) >> 8);
-
-      n_bytes_written = 0;
-      /*Send the command buffer to prepare for read and write operation*/
-      status = FT_Write (ftdi_handle, cmd_buf, CMD_BUFF_SIZE, &n_bytes_written);
-      if (status != FT_OK)
-      {
-         LOG_ERROR (LOG_STATE_ON, "%s: failed to send SPI message\n", "");
-         return;
-      }
-
-      n_bytes_written = 0;
-      /*Write data*/
-      status = FT_Write (
-         ftdi_handle,
-         &((uint8_t *)data_written)[n_bytes_transferred],
-         current_transfer_size,
-         &n_bytes_written);
-      if (status != FT_OK)
-      {
-         LOG_ERROR (LOG_STATE_ON, "%s: failed to send SPI message\n", __func__);
-         return;
-      }
-
-      n_bytes_read = 0;
-      /*Read data*/
-      status = FT_Read (
-         ftdi_handle,
-         &((uint8_t *)data_read)[n_bytes_transferred],
-         n_bytes_written,
-         &n_bytes_read);
-      if (status != FT_OK)
-      {
-         LOG_ERROR (LOG_STATE_ON, "%s: failed to send SPI message\n", __func__);
-         return;
-      }
-
-      /*Should never happen*/
-      if (n_bytes_read != n_bytes_written)
-      {
-         LOG_ERROR (
-            LOG_STATE_ON,
-            "%s: Not the same amount written as read\n",
-            __func__);
-         return;
-      }
-
-      n_bytes_transferred += n_bytes_read;
+      LOG_ERROR (LOG_STATE_ON, "%s: failed to send SPI message\n", "");
+      goto unlock;
    }
-   set_cs_pin (ftdi_handle, FALSE);
+
+   if (idx != n_bytes_written)
+   {
+      LOG_ERROR (
+         LOG_STATE_ON,
+         "%s: Not the same amount written as expected (%u, %u)\n",
+         __func__,
+         (DWORD)n_bytes_to_transfer, n_bytes_read);
+      goto unlock;
+   }
+
+   /*Read data*/
+   status = FT_Read (
+      ftdi_handle,
+      data_read,
+      n_bytes_to_transfer,
+      &n_bytes_read);
+
+   if (status != FT_OK)
+   {
+      LOG_ERROR (LOG_STATE_ON, "%s: failed to send SPI message\n", __func__);
+      goto unlock;
+   }
+
+   if (n_bytes_to_transfer != n_bytes_read)
+   {
+      LOG_ERROR (
+         LOG_STATE_ON,
+         "%s: Not the same amount read as expected (%u, %u)\n",
+         __func__,
+         (DWORD)n_bytes_to_transfer, n_bytes_read);
+      goto unlock;
+   }
+
+unlock:
    os_mutex_unlock (ftdi_io_mutex);
    return;
 }

@@ -41,8 +41,8 @@ typedef struct
  */
 static bool read_irq (void * ftdi_handle)
 {
-   uint32_t status                = 0;
-   uint32_t n_bytes_transferred   = 0;
+   FT_STATUS status = 0;
+   DWORD n_bytes_transferred = 0;
    uint8_t rx_buf[RX_BUFFER_SIZE] = {};
    uint8_t tx_buf[TX_BUFFER_SIZE] = {};
 

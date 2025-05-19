@@ -148,7 +148,7 @@ void sm_trans_13 (iolink_port_t * port)
 void sm_trans_15 (iolink_port_t * port, bool is_autocom)
 {
    iolink_error_t res;
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_NO_CHECK;
    paraml.cycletime       = 0;
@@ -172,7 +172,7 @@ void sm_trans_15 (iolink_port_t * port, bool is_autocom)
 void sm_trans_16 (iolink_port_t * port, bool is_di)
 {
    iolink_error_t res;
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
    iolink_sm_portmode_t expected_sm_portmode;
 
    paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_NO_CHECK;
@@ -271,7 +271,7 @@ void sm_checkCompatibility (
 void sm_set_portconfig_inactive (iolink_port_t * port)
 {
    iolink_error_t res;
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
    iolink_sm_state_t current_state = sm_get_state (port);
    uint8_t expected_write_devmode_inactive_cnt =
       mock_iolink_write_devmode_inactive_cnt;
@@ -306,7 +306,7 @@ void sm_set_portconfig_inactive (iolink_port_t * port)
 void sm_set_portconfig_v11_autocom (iolink_port_t * port)
 {
    iolink_error_t res;
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    paraml.vendorid        = mock_iolink_vendorid;
    paraml.deviceid        = mock_iolink_deviceid;
@@ -332,7 +332,7 @@ TEST_F (SMTest, Fsm)
 
 TEST_F (SMTest, invalid_inspection_level)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
    iolink_error_t res;
 
    EXPECT_EQ (SM_STATE_PortInactive, sm_get_state (port));
@@ -349,7 +349,7 @@ TEST_F (SMTest, invalid_inspection_level)
 
 TEST_F (SMTest, invalid_target_mode)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
    iolink_error_t res;
 
    EXPECT_EQ (SM_STATE_PortInactive, sm_get_state (port));
@@ -368,7 +368,7 @@ TEST_F (SMTest, invalid_target_mode)
 TEST_F (SMTest, checkCompatibility_IL_TYPE_COMP_bad_revision)
 {
    int i;
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    mock_iolink_revisionid = IOL_DIR_PARAM_REV_V11 + 1;
 
@@ -421,7 +421,7 @@ TEST_F (SMTest, checkCompatibility_IL_TYPE_COMP_bad_revision)
 TEST_F (SMTest, checkCompatibility_IL_IDENTICAL_bad_revision)
 {
    int i;
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    mock_iolink_revisionid = IOL_DIR_PARAM_REV_V11 + 1;
 
@@ -477,7 +477,7 @@ TEST_F (SMTest, checkCompatibility_IL_IDENTICAL_bad_revision)
 
 TEST_F (SMTest, checkCompatibility_IL_TYPE_COMP)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_TYPE_COMP;
    paraml.cycletime       = mock_iolink_min_cycletime;
@@ -516,7 +516,7 @@ TEST_F (SMTest, checkCompatibility_IL_TYPE_COMP)
 
 TEST_F (SMTest, checkCompatibility_IL_TYPE_COMP_bad_serial)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_TYPE_COMP;
    paraml.cycletime       = 0;
@@ -556,7 +556,7 @@ TEST_F (SMTest, checkCompatibility_IL_TYPE_COMP_bad_serial)
 
 TEST_F (SMTest, checkCompatibility_IL_TYPE_COMP_bad_vid)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_TYPE_COMP;
    paraml.cycletime       = 0;
@@ -589,7 +589,7 @@ TEST_F (SMTest, checkCompatibility_IL_TYPE_COMP_bad_vid)
 TEST_F (SMTest, checkCompatibility_IL_TYPE_COMP_bad_did)
 {
    int i;
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_TYPE_COMP;
    paraml.cycletime       = 0;
@@ -639,7 +639,7 @@ TEST_F (SMTest, checkCompatibility_IL_TYPE_COMP_bad_did)
 
 TEST_F (SMTest, checkCompatibility_IL_TYPE_COMP_bad_cyc_time)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_TYPE_COMP;
    // Bad cycle time
@@ -671,7 +671,7 @@ TEST_F (SMTest, checkCompatibility_IL_TYPE_COMP_bad_cyc_time)
 
 TEST_F (SMTest, checkCompatibility_IL_IDENTICAL)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_IDENTICAL;
    paraml.cycletime       = 0;
@@ -710,7 +710,7 @@ TEST_F (SMTest, checkCompatibility_IL_IDENTICAL)
 
 TEST_F (SMTest, checkCompatibility_IL_IDENTICAL_bad_serial)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_IDENTICAL;
    paraml.cycletime       = 0;
@@ -753,7 +753,7 @@ TEST_F (SMTest, checkCompatibility_IL_IDENTICAL_bad_serial)
 
 TEST_F (SMTest, checkCompatibility_IL_IDENTICAL_bad_vid)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_IDENTICAL;
    paraml.cycletime       = 0;
@@ -782,7 +782,7 @@ TEST_F (SMTest, checkCompatibility_IL_IDENTICAL_bad_vid)
 TEST_F (SMTest, checkCompatibility_IL_IDENTICAL_bad_did)
 {
    int i;
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_IDENTICAL;
    paraml.cycletime       = 0;
@@ -832,7 +832,7 @@ TEST_F (SMTest, checkCompatibility_IL_IDENTICAL_bad_did)
 
 TEST_F (SMTest, checkCompatibility_IL_IDENTICAL_bad_cyc_time)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_IDENTICAL;
    // Bad cycle time
@@ -864,7 +864,7 @@ TEST_F (SMTest, checkCompatibility_IL_IDENTICAL_bad_cyc_time)
 
 TEST_F (SMTest, checkCompatibilityV10_IL_TYPE_COMP)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    mock_iolink_revisionid = IOL_DIR_PARAM_REV_V10;
 
@@ -885,7 +885,7 @@ TEST_F (SMTest, checkCompatibilityV10_IL_TYPE_COMP)
 
 TEST_F (SMTest, checkCompatibilityV10_IL_TYPE_COMP_bad_vid)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    mock_iolink_revisionid = IOL_DIR_PARAM_REV_V10;
 
@@ -910,7 +910,7 @@ TEST_F (SMTest, checkCompatibilityV10_IL_TYPE_COMP_bad_vid)
 
 TEST_F (SMTest, checkCompatibilityV10_IL_TYPE_COMP_bad_did)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    mock_iolink_revisionid = IOL_DIR_PARAM_REV_V10;
 
@@ -935,7 +935,7 @@ TEST_F (SMTest, checkCompatibilityV10_IL_TYPE_COMP_bad_did)
 
 TEST_F (SMTest, checkCompatibilityV10_IL_TYPE_COMP_bad_cyc_time)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    mock_iolink_revisionid = IOL_DIR_PARAM_REV_V10;
 
@@ -960,7 +960,7 @@ TEST_F (SMTest, checkCompatibilityV10_IL_TYPE_COMP_bad_cyc_time)
 
 TEST_F (SMTest, checkCompatibilityV10_IL_IDENTICAL)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    mock_iolink_revisionid = IOL_DIR_PARAM_REV_V10;
 
@@ -981,7 +981,7 @@ TEST_F (SMTest, checkCompatibilityV10_IL_IDENTICAL)
 
 TEST_F (SMTest, checkCompatibilityV10_IL_IDENTICAL_bad_vid)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    mock_iolink_revisionid = IOL_DIR_PARAM_REV_V10;
 
@@ -1006,7 +1006,7 @@ TEST_F (SMTest, checkCompatibilityV10_IL_IDENTICAL_bad_vid)
 
 TEST_F (SMTest, checkCompatibilityV10_IL_IDENTICAL_bad_did)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    mock_iolink_revisionid = IOL_DIR_PARAM_REV_V10;
 
@@ -1031,7 +1031,7 @@ TEST_F (SMTest, checkCompatibilityV10_IL_IDENTICAL_bad_did)
 
 TEST_F (SMTest, checkCompatibilityV10_IL_IDENTICAL_bad_serial)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    mock_iolink_revisionid = IOL_DIR_PARAM_REV_V10;
 
@@ -1072,7 +1072,7 @@ TEST_F (SMTest, checkCompatibilityV10_IL_IDENTICAL_bad_serial)
 
 TEST_F (SMTest, checkCompatibilityV10_IL_IDENTICAL_bad_cyc_time)
 {
-   iolink_smp_parameterlist_t paraml;
+   iolink_smp_parameterlist_t paraml = {};
 
    mock_iolink_revisionid = IOL_DIR_PARAM_REV_V10;
 
@@ -1152,7 +1152,7 @@ TEST_F (SMTest, SM_SetPortConfig_INACTIVE)
 
    // InspectionFault_6 to PortInactive_0
    {
-      iolink_smp_parameterlist_t paraml;
+      iolink_smp_parameterlist_t paraml = {};
 
       mock_iolink_mastercmd_master_ident_cnt = 0;
       paraml.inspectionlevel                 = IOLINK_INSPECTIONLEVEL_TYPE_COMP;
@@ -1225,7 +1225,7 @@ TEST_F (SMTest, SM_SetPortConfig_CFGCOM_or_AUTOCOM)
    // InspectionFault_6 to PortInactive_0
    {
       int i;
-      iolink_smp_parameterlist_t paraml;
+      iolink_smp_parameterlist_t paraml = {};
 
       paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_TYPE_COMP;
       paraml.cycletime       = 0;
@@ -1320,7 +1320,7 @@ TEST_F (SMTest, SM_SetPortConfig_DIDO)
    // InspectionFault_6 to DIDO_8
    {
       int i;
-      iolink_smp_parameterlist_t paraml;
+      iolink_smp_parameterlist_t paraml = {};
 
       paraml.inspectionlevel = IOLINK_INSPECTIONLEVEL_TYPE_COMP;
       paraml.cycletime       = 0;
